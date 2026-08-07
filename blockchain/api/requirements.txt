@@ -1,0 +1,6 @@
+fastapi
+plyvel-ci
+uvicorn
+httpx
+pytest
+pytest-cov
