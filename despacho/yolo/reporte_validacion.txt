@@ -1,0 +1,33 @@
+Validacion del conteo de sacos - HU-07, criterio 2
+Generado: 2026-09-16
+Modelo:   /home/claude/quinor/despacho/yolo/modelos/sacos.pt
+
+ADVERTENCIA: el set de validacion es sintetico. QUINOR todavia no ha
+entregado fotogramas de la rampa, y el dataset propio etiquetado es
+HU-19. Esta cifra mide el contador (deteccion, seguimiento, oclusiones,
+cruces y retornos), no el comportamiento del modelo con sacos de yute
+reales, polvo y contraluz. La cifra de planta sale del piloto.
+
+ sacos  contados  vuelven  personas  precision   clip s  proceso s
+     4         4        0         0    100.00%      8.0        8.6
+     6         6        0         1    100.00%      9.6        8.6
+     8         8        0         2    100.00%     11.2       10.1
+    10        10        0         1    100.00%     12.8       11.6
+     5         5        1         1    100.00%      9.6        8.6
+     7         7        0         2    100.00%     10.4        9.3
+     3         3        0         1    100.00%      7.2        6.5
+     9         9        1         2    100.00%     12.8       11.4
+
+Cargas evaluadas:        8
+Cargas exactas:          8
+Error medio:             0.0 sacos por carga
+Precision media:         100.0 %
+Precision de la peor:    100.0 %
+Umbral del criterio 2:   95.0 %
+Resultado:               CUMPLE
+
+Velocidad (RNF-01, informativo: el criterio 2 mide precision)
+  Dispositivo:           cpu
+  Analisis por segundo de clip: 0.92 s
+  Objetivo del RNF-01:   0.43 s (7 min de clip en menos de 3)
+  En este dispositivo:   NO cumple, hace falta la GPU del RNF-06

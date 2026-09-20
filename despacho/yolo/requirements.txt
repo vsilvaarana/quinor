@@ -1,0 +1,32 @@
+# =============================================================================
+# QUINOR S.A.C. - Alternativa 1 - Servicio YOLO de conteo de sacos (HU-07)
+#
+# Va en su propio contenedor porque esto son varios gigas que ni el orquestador
+# ni el grabador necesitan, y porque en planta la GPU del RNF-06 se le asigna
+# solo a este servicio.
+#
+# Versiones fijadas a un conjunto verificado: el modelo entrenado depende de la
+# version de ultralytics con la que se entreno. Al actualizarla, volver a correr
+# `python -m sim.validar` y comprobar que el criterio 2 sigue cumpliendose.
+# =============================================================================
+
+# --- API y servidor ----------------------------------------------------------
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+
+# --- Vision ------------------------------------------------------------------
+ultralytics==8.3.155               # YOLO11 y ByteTrack (apartado 6.4).
+# Rueda de CPU. En planta, con la GPU del RNF-06, se instala la de CUDA:
+#   pip install torch==2.5.1 torchvision==0.20.1 \
+#       --index-url https://download.pytorch.org/whl/cu124
+torch==2.5.1
+torchvision==0.20.1
+opencv-python-headless==4.10.0.84  # headless: el contenedor no tiene pantalla.
+numpy==1.26.4
+
+# --- Configuracion (seccion 8: ningun secreto en el codigo) -------------------
+python-dotenv==1.0.1
+
+# --- Observabilidad ----------------------------------------------------------
+structlog==24.4.0

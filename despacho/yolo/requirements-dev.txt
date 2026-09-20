@@ -1,0 +1,11 @@
+# =============================================================================
+# Dependencias solo de desarrollo y pruebas. No se instalan en produccion.
+# El RNF-05 exige cobertura minima; este servicio la mantiene por encima del 90 %.
+# =============================================================================
+-r requirements.txt
+
+pytest==8.3.4
+pytest-asyncio==0.25.0
+pytest-cov==6.0.0
+httpx==0.28.1                      # TestClient de FastAPI lo necesita.
+ruff==0.8.4

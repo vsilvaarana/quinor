@@ -1,0 +1,29 @@
+# =============================================================================
+# QUINOR S.A.C. - Alternativa 1 - Servicio de notificaciones (HU-10)
+#
+# Un solo canal desde el cambio de alcance del 18/09/2026: correo. Slack, Teams
+# y SMS entran con su propia historia, y por eso aqui no hay ninguna dependencia
+# de esos servicios: anadirla "por si acaso" seria arrastrar una libreria sin
+# usar hasta que se decida cual de los dos.
+#
+# La contrasena del buzon de salida no esta aqui ni en la imagen: llega por
+# variable de entorno o secreto de Docker, como manda el apartado 8.
+# =============================================================================
+
+# --- API y servidor ----------------------------------------------------------
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+
+# --- Correo (apartado 6.4) ---------------------------------------------------
+aiosmtplib==3.0.2
+
+# --- Base de datos: invitado en el esquema del orquestador -------------------
+SQLAlchemy==2.0.36
+PyMySQL==1.1.1
+
+# --- Configuracion (apartado 8: ninguna clave en el codigo) ------------------
+python-dotenv==1.0.1
+
+# --- Observabilidad ----------------------------------------------------------
+structlog==24.4.0

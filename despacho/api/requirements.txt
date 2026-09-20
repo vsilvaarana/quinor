@@ -1,0 +1,49 @@
+# =============================================================================
+# QUINOR S.A.C. - Alternativa 1 - Dependencias de ejecucion del Sprint 1
+# Alcance: HU-01 (bascula), HU-02 (ERP), HU-04 (configuracion), HU-15 (usuarios)
+# HU-17 (cola de tareas) queda fuera: depende de HU-03, del Sprint 2.
+# Versiones fijadas a un conjunto verificado. Al actualizarlas, hacerlo de una
+# en una y volver a levantar el stack.
+# =============================================================================
+
+# --- API y servidor ----------------------------------------------------------
+fastapi==0.115.6
+uvicorn[standard]==0.34.0          # Servidor ASGI. FastAPI no arranca sin el.
+pydantic==2.10.4
+python-multipart==0.0.20           # Formularios y subida de archivos. HU-15 entra
+                                   # con cuerpo JSON, no con formulario OAuth2.
+
+# --- Configuracion y secretos (seccion 8) ------------------------------------
+pydantic-settings==2.7.0
+python-dotenv==1.0.1
+
+# --- Base de datos MySQL 8 ---------------------------------------------------
+SQLAlchemy==2.0.36
+PyMySQL==1.1.1
+cryptography==44.0.0               # Necesario si el servidor autentica con
+                                   # caching_sha2_password (MySQL 8). MariaDB usa
+                                   # mysql_native_password, pero se deja para que
+                                   # el mismo contenedor sirva contra los dos.
+                                   # Sin este paquete PyMySQL falla en el primer connect.
+alembic==1.14.0
+
+# --- Autenticacion HU-15 -----------------------------------------------------
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1                      # No subir a 4.1+: passlib 1.7.4 lee
+                                   # bcrypt.__about__, atributo eliminado en 4.1.
+                                   # El token opaco se genera con secrets y se
+                                   # almacena como SHA-256 con hashlib (stdlib).
+
+# --- HU-01 lectura de bascula ------------------------------------------------
+pymodbus[serial]==3.7.4            # El extra [serial] habilita RS-232 y trae pyserial.
+tenacity==9.0.0                    # Timeout de 5 s y reintentos con espera creciente.
+
+# --- HU-02 integracion con el ERP --------------------------------------------
+httpx==0.28.1
+
+# --- HU-04 dashboard y configuracion -----------------------------------------
+streamlit==1.41.1
+pandas==2.2.3                      # st.dataframe lo requiere. Tambien HU-11, HU-14 y HU-20.
+
+# --- Observabilidad ----------------------------------------------------------
+structlog==24.4.0

@@ -1,0 +1,25 @@
+# =============================================================================
+# QUINOR S.A.C. - Alternativa 1 - Servicio de vision-lenguaje (HU-09)
+#
+# Es el unico servicio del sistema que sale a internet, y por eso vive aparte:
+# asi esa salida esta en un solo sitio que se puede cortar, vigilar y limitar.
+#
+# No lleva el SDK de ningun proveedor. El cliente habla HTTP contra la API del
+# que se configure, con un adaptador por proveedor en app/proveedores.py: los
+# SDK cambian mas rapido que las APIs, y atarse a uno haria del cambio de
+# proveedor una reescritura en lugar de una variable de entorno.
+# =============================================================================
+
+# --- API y servidor ----------------------------------------------------------
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+
+# --- Llamada al proveedor ----------------------------------------------------
+httpx==0.28.1                      # Misma version que el orquestador y el grabador.
+
+# --- Configuracion (apartado 8: ninguna clave en el codigo) ------------------
+python-dotenv==1.0.1
+
+# --- Observabilidad ----------------------------------------------------------
+structlog==24.4.0

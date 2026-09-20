@@ -1,0 +1,169 @@
+// Diagrama entidad-relacion del modelo de datos QUINOR - Alternativa 1
+// Paleta alineada con el documento funcional: azul 1F3864 para cabeceras.
+digraph modelo {
+  graph [rankdir=TB, splines=ortho, nodesep=0.55, ranksep=0.85,
+         bgcolor="white", fontname="Helvetica", pad=0.3, fontsize=16];
+  node  [shape=plaintext, fontname="Helvetica", fontsize=17];
+  edge  [color="#5B6B8C", penwidth=1.3, fontname="Helvetica", fontsize=9,
+         fontcolor="#1F3864", arrowhead=none, arrowtail=none];
+
+  // ---------------------------------------------------------------- entidades
+  usuario [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#BFBFBF">
+      <TR><TD BGCOLOR="#1F3864" COLSPAN="2"><FONT COLOR="white" POINT-SIZE="18"><B>usuario</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>PK</B></TD><TD ALIGN="LEFT" PORT="id">id</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">nombre</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>UQ</B></TD><TD ALIGN="LEFT">correo</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">rol</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">hash_password</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">activo</TD></TR>
+    </TABLE>>];
+
+  api_token [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#BFBFBF">
+      <TR><TD BGCOLOR="#1F3864" COLSPAN="2"><FONT COLOR="white" POINT-SIZE="18"><B>api_token</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>PK</B></TD><TD ALIGN="LEFT" PORT="id">id</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>FK</B></TD><TD ALIGN="LEFT" PORT="usuario_id">usuario_id</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>UQ</B></TD><TD ALIGN="LEFT">token_hash</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">nombre</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">creado_en</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">expira_en</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">ultimo_uso_en</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">revocado_en</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>FK</B></TD><TD ALIGN="LEFT" PORT="revocado_por">revocado_por</TD></TR>
+    </TABLE>>];
+
+  orden_despacho [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#BFBFBF">
+      <TR><TD BGCOLOR="#1F3864" COLSPAN="2"><FONT COLOR="white" POINT-SIZE="18"><B>orden_despacho</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>PK</B></TD><TD ALIGN="LEFT" PORT="id">id</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>UQ</B></TD><TD ALIGN="LEFT">numero_orden</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">cliente</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">producto</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">peso_esperado_kg</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">sacos_esperados</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">fecha</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">sincronizado_en</TD></TR>
+    </TABLE>>];
+
+  pesada [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#BFBFBF">
+      <TR><TD BGCOLOR="#1F3864" COLSPAN="2"><FONT COLOR="white" POINT-SIZE="18"><B>pesada</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>PK</B></TD><TD ALIGN="LEFT" PORT="id">id</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>FK</B></TD><TD ALIGN="LEFT" PORT="orden_id">orden_id</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">bascula_id</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">peso_real_kg</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">fecha_hora</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">origen</TD></TR>
+    </TABLE>>];
+
+  evento [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#BFBFBF">
+      <TR><TD BGCOLOR="#1F3864" COLSPAN="2"><FONT COLOR="white" POINT-SIZE="18"><B>evento</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>PK</B></TD><TD ALIGN="LEFT" PORT="id">id</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>FK UQ</B></TD><TD ALIGN="LEFT" PORT="pesada_id">pesada_id</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">diferencia_kg</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">diferencia_pct</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">sacos_contados</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">personas_detectadas</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">severidad</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">descripcion_ia</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">estado</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">clip_url</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">creado_en</TD></TR>
+    </TABLE>>];
+
+  veredicto [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#BFBFBF">
+      <TR><TD BGCOLOR="#1F3864" COLSPAN="2"><FONT COLOR="white" POINT-SIZE="18"><B>veredicto</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>PK</B></TD><TD ALIGN="LEFT" PORT="id">id</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>FK</B></TD><TD ALIGN="LEFT" PORT="evento_id">evento_id</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>FK</B></TD><TD ALIGN="LEFT" PORT="usuario_id">usuario_id</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">estado_nuevo</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">comentario</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">fecha</TD></TR>
+    </TABLE>>];
+
+  configuracion [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#BFBFBF">
+      <TR><TD BGCOLOR="#1F3864" COLSPAN="2"><FONT COLOR="white" POINT-SIZE="18"><B>configuracion</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>PK</B></TD><TD ALIGN="LEFT" PORT="id">id</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>UQ</B></TD><TD ALIGN="LEFT">producto</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">tolerancia_kg</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">tolerancia_pct</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">canales_por_severidad</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>FK</B></TD><TD ALIGN="LEFT" PORT="actualizado_por">actualizado_por</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">fecha</TD></TR>
+    </TABLE>>];
+
+  auditoria [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#BFBFBF">
+      <TR><TD BGCOLOR="#1F3864" COLSPAN="2"><FONT COLOR="white" POINT-SIZE="18"><B>auditoria</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>PK</B></TD><TD ALIGN="LEFT" PORT="id">id</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">entidad</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">entidad_id</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">accion</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>FK</B></TD><TD ALIGN="LEFT" PORT="usuario_id">usuario_id</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">detalle</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">fecha</TD></TR>
+    </TABLE>>];
+
+  salud_componente [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#BFBFBF">
+      <TR><TD BGCOLOR="#7F7F7F" COLSPAN="2"><FONT COLOR="white" POINT-SIZE="18"><B>salud_componente</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>PK</B></TD><TD ALIGN="LEFT">id</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">componente</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">estado</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">mensaje</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">verificado_en</TD></TR>
+    </TABLE>>];
+
+  modelo_version [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#BFBFBF">
+      <TR><TD BGCOLOR="#7F7F7F" COLSPAN="2"><FONT COLOR="white" POINT-SIZE="18"><B>modelo_version</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>PK</B></TD><TD ALIGN="LEFT">id</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>UQ</B></TD><TD ALIGN="LEFT">nombre + version</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">metrica_map</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">error_conteo</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">ruta_pesos</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>UQ</B></TD><TD ALIGN="LEFT">activo</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">fecha</TD></TR>
+    </TABLE>>];
+
+  // ------------------------------------------------------------ relaciones
+  // El extremo con punto relleno marca el lado N. Todas son 1:N salvo la
+  // indicada como 1:1.
+  orden_despacho -> pesada:orden_id:e [dir=both, arrowtail=tee, arrowhead=crow];
+  pesada -> evento:pesada_id
+      [dir=both, arrowtail=tee, arrowhead=tee, penwidth=2.0, color="#C55A11"];
+  evento -> veredicto:evento_id [dir=both, arrowtail=tee, arrowhead=crow];
+  usuario -> veredicto:usuario_id:w [dir=both, arrowtail=tee, arrowhead=crow];
+  usuario -> api_token:usuario_id:w [dir=both, arrowtail=tee, arrowhead=crow];
+  usuario -> api_token:revocado_por:w
+      [dir=both, arrowtail=tee, arrowhead=crow, style=dashed];
+  usuario -> configuracion:actualizado_por:w [dir=both, arrowtail=tee, arrowhead=crow];
+  usuario -> auditoria:usuario_id:w [dir=both, arrowtail=tee, arrowhead=crow];
+
+  // ---------------------------------------------------------------- leyenda
+  leyenda [shape=plaintext, label=<
+    <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="3" CELLPADDING="3" COLOR="#BFBFBF" BGCOLOR="#F2F2F2">
+      <TR><TD COLSPAN="2" ALIGN="LEFT"><B>Leyenda</B></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>PK</B></TD><TD ALIGN="LEFT">Clave primaria</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>FK</B></TD><TD ALIGN="LEFT">Clave foranea</TD></TR>
+      <TR><TD ALIGN="LEFT"><B>UQ</B></TD><TD ALIGN="LEFT">Restriccion de unicidad</TD></TR>
+      <TR><TD ALIGN="LEFT">|&#8212;&#60;</TD><TD ALIGN="LEFT">Uno a muchos. La pata de gallo marca el lado N</TD></TR>
+      <TR><TD ALIGN="LEFT"><FONT COLOR="#C55A11">|&#8212;|</FONT></TD><TD ALIGN="LEFT">Uno a uno. Una pesada genera a lo sumo un evento</TD></TR>
+      <TR><TD ALIGN="LEFT">- - -</TD><TD ALIGN="LEFT">Relacion opcional (admite NULL)</TD></TR>
+      <TR><TD ALIGN="LEFT" BGCOLOR="#1F3864"><FONT COLOR="white">  </FONT></TD><TD ALIGN="LEFT">Entidad relacionada</TD></TR>
+      <TR><TD ALIGN="LEFT" BGCOLOR="#7F7F7F"><FONT COLOR="white">  </FONT></TD><TD ALIGN="LEFT">Entidad independiente</TD></TR>
+    </TABLE>>];
+
+  veredicto -> salud_componente [style=invis];
+  veredicto -> modelo_version   [style=invis];
+
+  { rank=same; orden_despacho; usuario; }
+  { rank=same; pesada; api_token; configuracion; }
+  { rank=same; evento; auditoria; }
+  { rank=same; veredicto; }
+  { rank=same; salud_componente; modelo_version; leyenda; }
+}

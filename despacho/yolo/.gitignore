@@ -1,0 +1,14 @@
+# Entorno local y caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+
+# Dataset sintetico: lo regenera sim/rampa_sim.py, y el real es HU-19.
+datos/
+
+# Salidas de entrenamiento de ultralytics. El modelo activo (modelos/sacos.pt)
+# si se versiona: es con el que se midio el criterio 2.
+modelos/entrenamientos/
+modelos/yolo11n.pt

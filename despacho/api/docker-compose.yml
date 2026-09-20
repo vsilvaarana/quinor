@@ -1,0 +1,500 @@
+# =============================================================================
+# QUINOR S.A.C. - Alternativa 1 - Entorno de desarrollo del Sprint 1
+#
+#   docker compose up --build          levanta el Sprint 1 completo
+#   docker compose --profile sprint2 up  agrega Redis cuando entre HU-17
+#
+# Servicios del Sprint 1:
+#   mysql      base de eventos (HU-01, HU-02, HU-04, HU-15)
+#   api        orquestador FastAPI
+#   dashboard  interfaz Streamlit (HU-04, HU-15)
+#   scale-sim  simulador Modbus de la bascula (HU-01)
+#   erp-mock   stub de la API de ordenes del ERP (HU-02)
+#   redis      reservado para HU-17, no arranca sin el perfil sprint2
+#
+# Servicios del Sprint 2 ya entregados:
+#   grabador     grabacion continua (HU-05), recorte de clips (HU-06) y
+#                analisis del clip: sacos (HU-07), personas (HU-08) y la
+#                interpretacion del evento (HU-09)
+#   yolo         servicio de conteo de sacos con YOLO11 (HU-07)
+#   minio        almacen de clips de evento (HU-06)
+#   rtsp-server  servidor RTSP que hace de camara mientras no haya camaras
+#   camara-sim-01/02  camaras simuladas publicando contra el servidor RTSP
+# =============================================================================
+name: quinor-alt1
+
+x-app-build: &app-build
+  build:
+    context: .
+    dockerfile: Dockerfile
+    target: dev
+  env_file: .env
+  restart: unless-stopped
+
+services:
+
+  # ------------------------------------------------------------ MariaDB 10.11
+  # El mismo motor que el hosting de QUINOR. Antes era mysql:8.4, y el cambio
+  # salio de un hallazgo del 19/09/2026: el esquema fijaba la colacion
+  # utf8mb4_0900_ai_ci, que solo existe en MySQL 8, y en MariaDB fallaba con
+  # ERROR 1273 antes de crear la primera tabla. Desarrollar contra un motor y
+  # desplegar en otro esconde esa clase de diferencia hasta el peor momento.
+  #
+  # El servicio se sigue llamando mysql para no tocar DATABASE_URL ni los
+  # healthcheck de los demas contenedores: el nombre es el host dentro de la red.
+  #
+  # No se fija la colacion. MariaDB pone utf8mb4_general_ci y MySQL 8 pondria
+  # utf8mb4_0900_ai_ci; las dos ignoran mayusculas y tildes, que es lo unico que
+  # el esquema necesita. La suite corre verde en los dos.
+  mysql:
+    image: mariadb:10.11
+    command:
+      - --character-set-server=utf8mb4
+      # MariaDB lo soporta desde 10.1.8 (MDEV-3929) y desde 10.10 ya viene en ON
+      # (MDEV-28632). Se deja explicito para que el comportamiento no dependa de
+      # la version de la imagen.
+      - --explicit_defaults_for_timestamp=1
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MYSQL_DATABASE}
+      MARIADB_USER: ${MYSQL_USER}
+      MARIADB_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: ${TZ}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # El entrypoint de MariaDB ejecuta lo que encuentre aqui en el primer
+      # arranque, con su cliente, asi que los DELIMITER de los triggers
+      # funcionan. Solo el esquema: 99_pruebas.sql no debe tocar esta base.
+      - ./db/01_esquema.sql:/docker-entrypoint-initdb.d/01_esquema.sql:ro
+    healthcheck:
+      # El script que trae la propia imagen, que es lo que MariaDB recomienda en
+      # lugar de un ping. Un 'mysqladmin ping' responde OK mientras la base
+      # todavia se esta inicializando, y entonces los servicios que dependen de
+      # ella arrancan contra un motor que aun no acepta trabajo. --connect y
+      # --innodb_initialized comprueban las dos cosas que de verdad importan, y
+      # usa el usuario healthcheck de la imagen, sin credenciales en el compose.
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    restart: unless-stopped
+
+  # ------------------------------------------------- Simulador de bascula HU-01
+  # Sustituye la bascula fisica mientras no haya acceso a planta.
+  # Para probar el criterio 2 de HU-01 (no responde en 5 s):
+  #   docker compose stop scale-sim
+  scale-sim:
+    <<: *app-build
+    command: ["python", "-m", "sim.scale_sim"]
+    ports:
+      - "${SCALE_PORT:-5020}:5020"
+    volumes:
+      - ./sim:/code/sim:ro
+
+  # ----------------------------------------------------- Stub del ERP/WMS HU-02
+  erp-mock:
+    <<: *app-build
+    command: ["uvicorn", "sim.erp_mock:app", "--host", "0.0.0.0", "--port", "8001"]
+    ports:
+      - "${ERP_PORT:-8001}:8001"
+    volumes:
+      - ./sim:/code/sim:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8001/salud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ------------------------------------------------------- Orquestador backend
+  api:
+    <<: *app-build
+    # --factory: la aplicacion se construye con create_app, que recibe su
+    # configuracion por parametro en lugar de leerla al importar el modulo.
+    command:
+      - uvicorn
+      - app.main:create_app
+      - --factory
+      - --host=0.0.0.0
+      - --port=8000
+      - --reload
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - .:/code
+    depends_on:
+      mysql:
+        condition: service_healthy
+      erp-mock:
+        condition: service_healthy
+      scale-sim:
+        condition: service_started
+    healthcheck:
+      # GET / es la unica ruta publica. GET /salud exige un token valido en
+      # X-API-Key porque expone version de motor y detalle de fallos internos.
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ------------------------------------------------------- Dashboard HU-04/HU-15
+  dashboard:
+    <<: *app-build
+    command:
+      - streamlit
+      - run
+      - dashboard/app.py
+      - --server.port=8501
+      - --server.address=0.0.0.0
+      - --server.headless=true
+    ports:
+      - "${DASHBOARD_PORT:-8501}:8501"
+    volumes:
+      - .:/code
+    depends_on:
+      api:
+        condition: service_started
+
+  # ------------------------------------------ Servidor RTSP de las camaras HU-05
+  # Una camara IP es un servidor RTSP. Mientras no haya camaras reales, este
+  # servicio hace de servidor y camara-sim-01/02 publican contra el, de modo que
+  # el grabador se conecta igual que lo hara en planta.
+  rtsp-server:
+    image: bluenviron/mediamtx:1.11.3
+    environment:
+      MTX_RTSPADDRESS: ":8554"
+      MTX_RTSPTRANSPORTS: "tcp"
+      MTX_RTMP: "no"
+      MTX_HLS: "no"
+      MTX_WEBRTC: "no"
+      MTX_SRT: "no"
+      MTX_API: "no"
+      MTX_LOGLEVEL: "warn"
+    ports:
+      - "${RTSP_PORT:-8554}:8554"
+    restart: unless-stopped
+
+  # ------------------------------------------- Camaras simuladas HU-05 (Sprint 2)
+  # Para probar el criterio 3, que exige detectar la desconexion:
+  #   docker compose stop camara-sim-01
+  #   curl -s -H "X-API-Key: $TOKEN" localhost:8000/salud
+  camara-sim-01: &camara-sim
+    build:
+      context: ../grabador
+      dockerfile: Dockerfile
+      target: dev
+    command: ["python", "-m", "sim.camara_sim"]
+    environment:
+      CAMERA_ID: camara-01
+      CAMERA_PUBLISH_URL: rtsp://rtsp-server:8554/rampa-01
+      TZ: ${TZ}
+    depends_on:
+      - rtsp-server
+    restart: unless-stopped
+
+  camara-sim-02:
+    <<: *camara-sim
+    environment:
+      CAMERA_ID: camara-02
+      CAMERA_PUBLISH_URL: rtsp://rtsp-server:8554/rampa-02
+      TZ: ${TZ}
+
+  # ------------------------------------------------ Grabador de video HU-05
+  grabador:
+    build:
+      context: ../grabador
+      dockerfile: Dockerfile
+      target: dev
+    command: ["python", "-m", "app.grabador"]
+    env_file: .env
+    environment:
+      # Las camaras reales se declaran aqui, una por entrada: id=url.
+      CAMERAS: ${CAMERAS:-camara-01=rtsp://rtsp-server:8554/rampa-01,camara-02=rtsp://rtsp-server:8554/rampa-02}
+      VIDEO_DIR: /video
+      # HU-07: a quien pedirle el conteo. Vacio deja el conteo apagado y el
+      # grabador sigue haciendo lo suyo de HU-05 y HU-06.
+      YOLO_URL: ${YOLO_URL:-http://yolo:8002}
+      YOLO_API_KEY: ${YOLO_API_KEY:-}
+      # HU-09: a quien pedirle la descripcion y la severidad. Vacio deja la
+      # interpretacion apagada, y el sistema sigue detectando y guardando
+      # evidencia sin ella (riesgo del apartado 12).
+      VLM_URL: ${VLM_URL:-http://vlm:8003}
+      VLM_SERVICE_API_KEY: ${VLM_SERVICE_API_KEY:-}
+      # HU-10: a quien pedirle el aviso en cuanto el evento queda clasificado.
+      # Vacio lo deja apagado: el evento se detecta, se graba y se clasifica, y
+      # el supervisor lo ve en el dashboard; lo que no sale es el correo.
+      NOTIFY_URL: ${NOTIFY_URL:-http://notificaciones:8004}
+      NOTIFY_SERVICE_API_KEY: ${NOTIFY_SERVICE_API_KEY:-}
+    volumes:
+      - video_buffer:/video
+      - ../grabador:/code
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rtsp-server:
+        condition: service_started
+      minio:
+        condition: service_healthy
+      # service_started y no healthy: el grabador tiene que grabar aunque el
+      # conteo no este listo. Un YOLO que tarda en cargar el modelo solo retrasa
+      # el conteo, y el reintento lo recoge.
+      yolo:
+        condition: service_started
+      vlm:
+        condition: service_started
+      # Tampoco healthy: un servicio de notificaciones que tarde en arrancar
+      # retrasa el correo, no la grabacion, y el reintento lo recoge.
+      notificaciones:
+        condition: service_started
+    restart: unless-stopped
+
+  # --------------------------------------------- Servicio YOLO HU-07 y HU-08
+  # Cuenta los sacos que cruzan la linea de carga y sigue a las personas que
+  # estuvieron en la zona de carga, en una sola pasada por el clip.
+  #
+  # No hay identificacion facial ni datos biometricos (RN-08): de cada persona
+  # salen un identificador que solo vale en ese clip, dos fotogramas y unos
+  # segundos.
+  #
+  # Comparte el volumen del buffer con el grabador porque el clip viaja por
+  # ruta y no por HTTP: son cientos de megas por evento.
+  #
+  # En planta lleva la GPU del RNF-06. Para asignarsela hace falta el runtime de
+  # NVIDIA y anadir aqui:
+  #   deploy: {resources: {reservations: {devices: [{capabilities: [gpu]}]}}}
+  # y poner YOLO_DEVICE=0. En desarrollo va en CPU, donde el analisis tarda mas
+  # que el video y el RNF-01 no se cumple: eso es esperado y el reporte de
+  # validacion lo dice.
+  yolo:
+    build:
+      context: ../yolo
+      dockerfile: Dockerfile
+      target: dev
+    command:
+      - uvicorn
+      - app.main:create_app
+      - --factory
+      - --host=0.0.0.0
+      - --port=8002
+    environment:
+      # Los pesos llegan por volumen: cambiar de modelo no reconstruye la imagen,
+      # que es lo que HU-19 va a necesitar al reentrenar con la rampa real.
+      YOLO_WEIGHTS: /modelos/sacos.pt
+      YOLO_DEVICE: ${YOLO_DEVICE:-cpu}
+      # Calibracion de la linea de carga y de la zona donde se mide la
+      # permanencia de las personas (HU-08), en coordenadas relativas. Las dos
+      # se ajustan en el piloto mirando un clip real (apartado 9.1).
+      LINEA_CARGA: ${LINEA_CARGA:-0.5,0.0,0.5,1.0}
+      ZONA_CARGA: ${ZONA_CARGA:-0.0,0.0,1.0,1.0}
+      PERSONAS_HABITUALES: ${PERSONAS_HABITUALES:-3}
+      PERMANENCIA_MAX_SEGUNDOS: ${PERMANENCIA_MAX_SEGUNDOS:-600}
+      # Clave compartida con el grabador. El servicio vive en la red interna del
+      # apartado 8 y solo lo llama el grabador.
+      YOLO_API_KEY: ${YOLO_API_KEY:-}
+      TZ: ${TZ}
+    volumes:
+      - ../yolo:/code
+      - ../yolo/modelos:/modelos:ro
+      # Solo lectura: este servicio mira el video, no lo escribe.
+      - video_buffer:/video:ro
+    ports:
+      - "${YOLO_PORT:-8002}:8002"
+    healthcheck:
+      # GET / es la unica ruta publica; /salud exige la clave cuando esta puesta.
+      test: ["CMD", "curl", "-fsS", "http://localhost:8002/"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s      # cargar PyTorch y los pesos tarda.
+    restart: unless-stopped
+
+  # --------------------------------------------- Servicio vision-lenguaje HU-09
+  # Describe lo ocurrido en el clip y propone una severidad.
+  #
+  # Va aparte por lo contrario que el de YOLO: no por tamano, sino porque es el
+  # unico servicio del sistema que sale a internet. Tenerlo en un contenedor
+  # propio deja esa salida en un solo sitio que se puede cortar y vigilar.
+  #
+  # La severidad del evento NO sale de aqui: sale de la RN-04, que es una regla
+  # con umbrales exactos. La del modelo se guarda aparte para medir la
+  # concordancia semanal del apartado 9.2.
+  vlm:
+    build:
+      context: ../vlm
+      dockerfile: Dockerfile
+      target: dev
+    command:
+      - uvicorn
+      - app.main:create_app
+      - --factory
+      - --host=0.0.0.0
+      - --port=8003
+    environment:
+      # 'stub' por defecto y a proposito: un valor que saliera a internet
+      # convertiria un despliegue mal configurado en una factura.
+      VLM_PROVIDER: ${VLM_PROVIDER:-stub}
+      VLM_API_KEY: ${VLM_API_KEY:-}
+      VLM_MODEL: ${VLM_MODEL:-claude-sonnet-4-5}
+      VLM_BASE_URL: ${VLM_BASE_URL:-http://vlm-stub:8004}
+      VLM_MAX_ATTEMPTS: ${VLM_MAX_ATTEMPTS:-3}
+      # Clave que este servicio exige a quien le llama, que es el grabador.
+      VLM_SERVICE_API_KEY: ${VLM_SERVICE_API_KEY:-}
+      # Contexto de planta del apartado 9.2: el prompt necesita saber como es
+      # una carga normal para poder decir que algo no lo fue.
+      PLANTA_SACOS_POR_CAMION: ${PLANTA_SACOS_POR_CAMION:-400}
+      PLANTA_DURACION_CARGA_MIN: ${PLANTA_DURACION_CARGA_MIN:-45}
+      PERSONAS_HABITUALES: ${PERSONAS_HABITUALES:-3}
+      TZ: ${TZ}
+    volumes:
+      - ../vlm:/code
+    ports:
+      - "${VLM_PORT:-8003}:8003"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8003/"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  # ------------------------------ Stub del proveedor de vision-lenguaje HU-09
+  # Habla el mismo dialecto que el proveedor real, con sus cabeceras y sus
+  # codigos de error. Mientras no haya clave de un proveedor, el sistema se
+  # levanta entero y se puede recorrer de punta a punta contra este.
+  #
+  # Sus descripciones no son analisis: GET /salud del servicio lo avisa.
+  vlm-stub:
+    build:
+      context: ../vlm
+      dockerfile: Dockerfile
+      target: dev
+    command: ["python", "-m", "sim.vlm_stub", "--puerto", "8004"]
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ../vlm/sim:/code/sim:ro
+    restart: unless-stopped
+
+  # ------------------------------------- Servicio de notificaciones HU-10
+  # Avisa al supervisor por correo segun la severidad del evento. Desde el
+  # cambio de alcance del 18/09/2026 el correo es el unico canal: Slack salio
+  # porque se esta evaluando Teams en su lugar, y el SMS salio con el.
+  #
+  # Va en su propio contenedor por lo mismo que el de vision-lenguaje: es uno de
+  # los dos servicios que hablan con un servidor de fuera, y tenerlo aparte deja
+  # esa salida en un sitio que se puede cortar, vigilar y limitar.
+  #
+  # Escucha en el 8004 dentro de su red. El vlm-stub tambien usa ese numero
+  # dentro del suyo y no se pisan: son dos contenedores distintos y el stub no
+  # publica puerto.
+  notificaciones:
+    build:
+      context: ../notificaciones
+      dockerfile: Dockerfile
+      target: dev
+    command:
+      - uvicorn
+      - app.main:create_app
+      - --factory
+      - --host=0.0.0.0
+      - --port=8004
+    env_file: .env
+    environment:
+      # Por defecto al buzon de desarrollo, nunca a un relay real: un despliegue
+      # mal configurado escribiria a supervisores de verdad.
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_SECURITY: ${SMTP_SECURITY:-ninguno}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-alertas@quinor.com.pe}
+      # El enlace del criterio 2. Este servicio no sabe donde esta publicado el
+      # dashboard, asi que se lo dicen.
+      DASHBOARD_BASE_URL: ${DASHBOARD_BASE_URL:-http://localhost:8501}
+      # Clave que este servicio exige a quien le llama, que es el grabador.
+      NOTIFY_SERVICE_API_KEY: ${NOTIFY_SERVICE_API_KEY:-}
+      NOTIFY_MAX_ATTEMPTS: ${NOTIFY_MAX_ATTEMPTS:-3}
+      TZ: ${TZ}
+    volumes:
+      - ../notificaciones:/code
+    ports:
+      - "${NOTIFY_PORT:-8004}:8004"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8004/"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  # ------------------------------------------ Buzon de desarrollo HU-10
+  # Acepta cualquier correo y no lo entrega a nadie: se leen en su interfaz web.
+  # Es lo que permite recorrer HU-10 de punta a punta sin un relay corporativo y
+  # sin riesgo de escribirle a un supervisor de verdad durante una prueba.
+  mailpit:
+    image: axllent/mailpit:v1.21
+    environment:
+      MP_MAX_MESSAGES: 500
+      TZ: ${TZ}
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    restart: unless-stopped
+
+  # --------------------------------------------- Almacen de clips HU-06
+  # 12 meses de clips segun el RNF-06, frente a las 72 h del buffer. Por eso son
+  # dos almacenes distintos: el buffer es un circulo y esto es un archivo.
+  minio:
+    image: minio/minio:RELEASE.2024-09-22T00-33-43Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+      TZ: ${TZ}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped
+
+  # -------------------------------------------------- Reservado HU-17 (Sprint 2)
+  # Declarado desde ahora para no rehacer la infraestructura al llegar al
+  # Sprint 2. No arranca salvo con: docker compose --profile sprint2 up
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["sprint2"]
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:
+  # Clips de evento. 12 meses segun el RNF-06, frente a las 72 h del buffer.
+  minio_data:
+  # Buffer circular de HU-05. En planta es el almacenamiento local de 2 TB del
+  # RNF-06; aqui, un volumen que sobrevive a docker compose down.
+  video_buffer:

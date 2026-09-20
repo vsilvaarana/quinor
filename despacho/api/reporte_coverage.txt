@@ -1,0 +1,52 @@
+Reporte de cobertura - API de Despacho QUINOR (Alternativa 1)
+Generado: 2026-09-19
+Comando:  pytest --cov=app --cov-report=term-missing --cov-fail-under=90
+Alcance:  HU-01 bascula, HU-02 ordenes del ERP, HU-04 tolerancias por producto,
+          HU-15 usuarios, roles y tokens, HU-03 evento de discrepancia,
+          HU-06 marca de inicio de carga (el recorte vive en el grabador)
+          HU-07 conteo de sacos expuesto en el evento (lo escribe el grabador)
+          HU-08 personas de la zona de carga en GET /eventos/{id}/personas
+          HU-09 descripcion, severidad y fotogramas clave en el evento
+          HU-10 avisos enviados de un evento en GET /eventos/{id}/avisos
+Entorno:  MySQL 8.0 y MariaDB 10.11 reales, servidor Modbus en proceso y stub del ERP con respx
+
+---------- coverage: platform linux, python 3.11.15-final-0 ----------
+Name                   Stmts   Miss  Cover   Missing
+----------------------------------------------------
+app/__init__.py            0      0   100%
+app/auditoria.py           9      0   100%
+app/bascula.py            57      0   100%
+app/cargas.py             37      0   100%
+app/config.py             36      0   100%
+app/configuracion.py      69      0   100%
+app/db.py                  7      0   100%
+app/erp.py                37      0   100%
+app/eventos.py            68      0   100%
+app/main.py              269      0   100%
+app/models.py            153      0   100%
+app/ordenes.py            63      0   100%
+app/pesadas.py            65      0   100%
+app/salud.py              78      0   100%
+app/schemas.py           178      0   100%
+app/seguridad.py          22      0   100%
+app/usuarios.py          139      0   100%
+----------------------------------------------------
+TOTAL                   1287      0   100%
+
+Required test coverage of 90% reached. Total coverage: 100.00%
+390 passed in 201.45s (0:03:21)
+
+
+Compatibilidad de motor (verificado el 19/09/2026)
+--------------------------------------------------
+La suite se ejecuto completa contra los dos motores, porque el hosting de QUINOR
+corre MariaDB y el compose de desarrollo corre MySQL 8:
+
+    MySQL 8.0.46      390 pruebas, 100 % de cobertura
+    MariaDB 10.11.14  390 pruebas, 100 % de cobertura
+
+Lo que eso obligo a cambiar: el esquema fijaba la colacion utf8mb4_0900_ai_ci,
+que solo existe en MySQL 8, y con ella el DDL no se podia cargar en MariaDB
+(ERROR 1273, Unknown collation). Ahora no se fija ninguna y se usa la del
+servidor: MySQL 8 pone utf8mb4_0900_ai_ci y MariaDB utf8mb4_general_ci, y las
+dos ignoran mayusculas y tildes, que es lo unico que el esquema necesita.

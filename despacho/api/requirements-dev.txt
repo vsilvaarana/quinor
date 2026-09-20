@@ -1,0 +1,11 @@
+# =============================================================================
+# Dependencias solo de desarrollo y pruebas. No se instalan en produccion.
+# El RNF-05 exige cobertura minima del 70 % en el orquestador.
+# =============================================================================
+-r requirements.txt
+
+pytest==8.3.4
+pytest-asyncio==0.25.0             # Los endpoints de FastAPI son async.
+pytest-cov==6.0.0                  # Cobertura exigida por el RNF-05.
+respx==0.22.0                      # Simula el ERP en pruebas sin levantar erp-mock.
+ruff==0.8.4                        # Formato y linting.

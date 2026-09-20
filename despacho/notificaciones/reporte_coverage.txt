@@ -1,0 +1,132 @@
+Reporte de cobertura - Servicio de notificaciones QUINOR (Alternativa 1)
+Generado: 2026-09-19
+Comando:  pytest --cov=app --cov-report=term-missing --cov-fail-under=90
+Alcance:  HU-10 aviso al supervisor por correo segun la severidad del evento
+Entorno:  MySQL 8.0 y MariaDB 10.11 reales con el esquema del orquestador, y un servidor SMTP real
+          levantado dentro de las pruebas con aiosmtpd. El correo se comprueba
+          del lado del servidor: que llego, a quien, con que cabeceras y con que
+          cuerpo.
+
+---------- coverage: platform linux, python 3.11.15-final-0 ----------
+Name                   Stmts   Miss  Cover   Missing
+----------------------------------------------------
+app/__init__.py            0      0   100%
+app/config.py             62      0   100%
+app/correo.py             74      0   100%
+app/destinatarios.py      45      0   100%
+app/main.py              106      0   100%
+app/plantilla.py         119      0   100%
+app/registro.py           60      0   100%
+app/schemas.py            33      0   100%
+app/tablas.py             17      0   100%
+----------------------------------------------------
+TOTAL                    516      0   100%
+
+Required test coverage of 90% reached. Total coverage: 100.00%
+144 passed in 9.09s
+
+
+El cambio de alcance, y lo que obligo a comprobar
+-------------------------------------------------
+El criterio 1 original repartia por canal: Alta a SMS y Slack, Media a Slack y
+correo, Baja a correo. Al quedar un solo canal, la severidad pasa a decidir a
+quien se avisa y con que urgencia, y eso es lo que se prueba:
+
+  test_la_alta_va_a_supervisores_y_administradores
+  test_la_media_solo_va_a_supervisores
+  test_la_baja_solo_va_a_supervisores
+  test_solo_la_alta_sale_con_prioridad
+  test_el_rol_consulta_no_recibe_alertas_de_ningun_nivel
+  test_los_tres_niveles_salen_por_correo  (contra el servidor SMTP real)
+
+Y, contra el servidor de correo, que la diferencia se nota en el buzon:
+  test_la_alta_llega_marcada_como_urgente      X-Priority 1, Importance high
+  test_la_baja_llega_con_prioridad_normal      X-Priority 3, Importance normal
+
+
+Criterio 2: lo que dice el correo
+---------------------------------
+Los tres datos se buscan en el texto del mensaje y no en la estructura que lo
+genero, porque lo que el supervisor lee es el texto:
+
+  test_el_correo_lleva_la_orden
+  test_el_correo_lleva_la_diferencia
+  test_el_correo_lleva_el_enlace_al_evento
+  test_el_correo_llega_en_texto_y_en_html      las dos partes, del lado del servidor
+
+Y dos casos que un correo de alerta no puede equivocar:
+  test_un_sobrante_dice_sobran
+      "faltan 8" y "sobran 8" son situaciones distintas; un numero suelto no las
+      distingue
+  test_con_los_sacos_cuadrados_y_peso_corto_manda_el_peso
+      el conteo cuadra y faltan kilos: producto sustituido, que es el problema
+      que motiva el proyecto. El asunto no puede decir "0 sacos" y callarse los
+      kilos
+  test_un_dato_que_falta_se_dice_y_no_se_inventa
+      "sin dato" y "0" no son lo mismo
+
+
+Criterio 3: los 60 segundos
+---------------------------
+Se mide entre los dos servicios y no se da por hecho:
+
+  test_se_mide_cuanto_paso_desde_el_analisis     la medida llega y se guarda
+  test_un_aviso_tardio_se_dice_en_lugar_de_ocultarse
+  test_sin_marca_de_tiempo_no_se_finge_que_se_cumplio
+      NULL no es cero: un cero fingido daria el criterio por cumplido sin
+      haberlo comprobado
+
+Y los reintentos, contra un servidor que se porta mal a peticion:
+  test_un_relay_saturado_se_reintenta_y_acaba_llegando    451, y llega al tercero
+  test_una_direccion_que_no_existe_no_se_reintenta        550, y no se insiste
+  test_si_solo_rechaza_a_uno_el_correo_sale_y_se_dice_a_quien_no
+
+
+Lo que estas pruebas obligaron a decidir
+----------------------------------------
+Que un aviso fallido no cierre el asunto. La clave unica (evento_id, canal)
+impide el correo repetido, pero si una fila fallida contara como aviso, un relay
+caido durante un minuto dejaria un evento Alto sin correo para siempre. La fila
+fallida se reemplaza en el siguiente intento:
+
+  test_un_aviso_fallido_no_bloquea_el_siguiente_intento   (servicio)
+  test_un_aviso_que_fallo_se_puede_reintentar             (API)
+  test_un_aviso_fallido_no_cierra_el_asunto               (grabador)
+
+Que se registre el caso de no tener a quien avisar. Un evento Alto sin
+destinatarios activos es un problema de configuracion, y sin registro seria un
+200 silencioso que nadie recibe:
+
+  test_sin_nadie_a_quien_avisar_queda_registrado
+  test_la_salud_avisa_cuando_no_hay_nadie_que_reciba_alertas
+
+
+Verificacion de punta a punta
+-----------------------------
+Ademas de la suite, HU-10 se recorrio entera con las piezas reales: MySQL con el
+esquema del orquestador, el servicio de notificaciones en su proceso, un buzon
+mailpit de verdad y el dashboard.
+
+  - El aviso salio del grabador con su marca de tiempo: 0.01 s desde el
+    analisis, dentro del criterio 3.
+  - El correo llego al buzon con el asunto "[ALERTA ALTA] Orden OD-2026-0148:
+    faltan 8 sacos (Andean Grains LLC)", a los dos supervisores y al
+    administrador, con X-Priority 1.
+  - La segunda vuelta del sondeo no mando un segundo correo.
+  - Los niveles Media y Baja salieron solo a los supervisores y sin prioridad.
+  - El dashboard muestra a quien se aviso, a que hora y cuanto se tardo.
+
+
+Compatibilidad de motor (verificado el 19/09/2026)
+--------------------------------------------------
+La suite se ejecuto completa contra los dos motores, porque el hosting de QUINOR
+corre MariaDB y el compose de desarrollo corre MySQL 8:
+
+    MySQL 8.0.46      144 pruebas, 100 % de cobertura
+    MariaDB 10.11.14  144 pruebas, 100 % de cobertura
+
+Lo que eso obligo a cambiar: el esquema fijaba la colacion utf8mb4_0900_ai_ci,
+que solo existe en MySQL 8, y con ella el DDL no se podia cargar en MariaDB
+(ERROR 1273, Unknown collation). Ahora no se fija ninguna y se usa la del
+servidor: MySQL 8 pone utf8mb4_0900_ai_ci y MariaDB utf8mb4_general_ci, y las
+dos ignoran mayusculas y tildes, que es lo unico que el esquema necesita.

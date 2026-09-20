@@ -1,0 +1,30 @@
+# =============================================================================
+# QUINOR S.A.C. - Alternativa 1 - Grabador de video (HU-05)
+# Versiones alineadas con las del orquestador: los dos servicios escriben en la
+# misma base y conviene que hablen con la misma version del driver.
+# =============================================================================
+
+# --- Base de datos MySQL 8 ---------------------------------------------------
+SQLAlchemy==2.0.36
+PyMySQL==1.1.1
+cryptography==44.0.0               # Necesario si el servidor autentica con
+                                   # caching_sha2_password (MySQL 8). MariaDB usa
+                                   # mysql_native_password, pero se deja para que
+                                   # el mismo contenedor sirva contra los dos.
+
+# --- Configuracion -----------------------------------------------------------
+python-dotenv==1.0.1
+
+# --- HU-06 almacen de clips --------------------------------------------------
+minio==7.2.20                      # Cliente oficial de MinIO, compatible con S3.
+
+# --- HU-07 conteo de sacos ---------------------------------------------------
+httpx==0.28.1                      # Llamada al servicio YOLO. Misma version que
+                                   # la del orquestador, que ya habla con el ERP.
+
+# --- Observabilidad ----------------------------------------------------------
+structlog==24.4.0
+
+# ffmpeg no se instala con pip: viene en la imagen (ver Dockerfile). El grabador
+# lo invoca como proceso y no usa ninguna envoltura de Python, de modo que la
+# orden que se ejecuta es exactamente la que se lee en app/ffmpeg.py.

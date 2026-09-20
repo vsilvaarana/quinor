@@ -1,0 +1,15 @@
+# =============================================================================
+# Dependencias solo de desarrollo y pruebas. No se instalan en produccion.
+#
+# aiosmtpd levanta un servidor SMTP de verdad dentro de las pruebas. Es lo que
+# permite comprobar que el correo sale, con sus cabeceras y sus dos partes, en
+# lugar de comprobar que se llamo a una funcion.
+# =============================================================================
+-r requirements.txt
+
+aiosmtpd==1.4.6
+httpx==0.28.1
+pytest==8.3.4
+pytest-asyncio==0.25.0
+pytest-cov==6.0.0
+ruff==0.8.4

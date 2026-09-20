@@ -1,0 +1,73 @@
+Reporte de cobertura - Grabador de video QUINOR (Alternativa 1)
+Generado: 2026-09-19
+Comando:  pytest --cov=app --cov-report=term-missing --cov-fail-under=90
+Alcance:  HU-05 grabacion continua en buffer circular
+          HU-06 recorte del clip de cada evento y subida al almacen
+          HU-07 conteo de sacos del clip y escritura en el evento (criterio 3)
+          HU-08 registro de las personas de la zona de carga (criterio 2)
+          HU-09 descripcion y severidad del evento, y fotogramas en el almacen
+          HU-10 peticion del aviso en cuanto el evento queda clasificado
+                (criterio 3)
+Entorno:  MySQL 8.0 y MariaDB 10.11 reales, ffmpeg y ffprobe reales, servidor RTSP mediamtx con
+          camara simulada publicando, servidor S3 en proceso para el almacen, y
+          y tres servicios de mentira pero por HTTP de verdad: el de YOLO, el
+          de vision-lenguaje y el de notificaciones
+
+---------- coverage: platform linux, python 3.11.15-final-0 ----------
+Name               Stmts   Miss  Cover   Missing
+------------------------------------------------
+app/__init__.py             0      0   100%
+app/almacen.py             58      0   100%
+app/aviso.py               90      0   100%
+app/clips.py               85      0   100%
+app/config.py             102      0   100%
+app/conteo.py             124      0   100%
+app/db.py                   4      0   100%
+app/ffmpeg.py              47      0   100%
+app/grabador.py           169      0   100%
+app/interpretacion.py     162      0   100%
+app/recorte.py             85      0   100%
+app/retencion.py           73      0   100%
+app/salud.py               32      0   100%
+app/tablas.py              13      0   100%
+------------------------------------------------
+TOTAL                    1090      0   100%
+
+Required test coverage of 90% reached. Total coverage: 100.00%
+279 passed in 337.25s (0:05:37)
+
+
+HU-10: como se prueba el criterio 3 desde este lado
+---------------------------------------------------
+"La notificacion se envia en menos de 60 s tras el analisis" se mide entre dos
+servicios, y lo que se comprueba aqui es la mitad que le toca al grabador:
+
+  test_se_pide_el_aviso_con_lo_que_tardo_desde_el_analisis
+      la marca se toma al escribir la severidad y viaja en la peticion
+  test_el_camino_normal_avisa_en_la_misma_pasada_del_analisis
+      no se espera a la vuelta siguiente del sondeo
+  test_el_reintento_no_finge_que_el_analisis_acaba_de_pasar
+      en la pasada de reintento no se manda marca: decir "cero segundos" daria
+      el criterio por cumplido sin haberlo comprobado
+  test_al_quedar_clasificado_se_avisa_en_la_misma_pasada
+      el enganche entre HU-09 y HU-10, desde interpretar
+  test_tambien_se_avisa_cuando_no_hizo_falta_el_modelo
+      la RN-04 da severidad con modelo o sin el, y el criterio 1 de HU-10 manda
+      correo en los tres niveles
+  test_un_fallo_avisando_no_tumba_la_interpretacion
+      el analisis ya esta guardado; perderlo por un correo seria mucho peor
+
+
+Compatibilidad de motor (verificado el 19/09/2026)
+--------------------------------------------------
+La suite se ejecuto completa contra los dos motores, porque el hosting de QUINOR
+corre MariaDB y el compose de desarrollo corre MySQL 8:
+
+    MySQL 8.0.46      279 pruebas, 100 % de cobertura
+    MariaDB 10.11.14  279 pruebas, 100 % de cobertura
+
+Lo que eso obligo a cambiar: el esquema fijaba la colacion utf8mb4_0900_ai_ci,
+que solo existe en MySQL 8, y con ella el DDL no se podia cargar en MariaDB
+(ERROR 1273, Unknown collation). Ahora no se fija ninguna y se usa la del
+servidor: MySQL 8 pone utf8mb4_0900_ai_ci y MariaDB utf8mb4_general_ci, y las
+dos ignoran mayusculas y tildes, que es lo unico que el esquema necesita.

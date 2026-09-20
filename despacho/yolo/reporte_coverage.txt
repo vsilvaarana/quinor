@@ -1,0 +1,83 @@
+Reporte de cobertura - Servicio YOLO QUINOR (Alternativa 1)
+Generado: 2026-09-17
+Comando:  pytest --cov=app --cov-report=term-missing --cov-fail-under=90
+Alcance:  HU-07 conteo de los sacos que cruzan la linea de carga
+          HU-08 seguimiento de las personas en la zona de carga
+          HU-09 extraccion de los fotogramas clave del clip
+Entorno:  modelo YOLO11n entrenado de verdad (modelos/sacos.pt), video real
+          generado por sim/rampa_sim.py, y el endpoint contra TestClient.
+          tests/test_modelo.py carga los pesos y analiza video; se salta cuando
+          no estan entrenados.
+
+---------- coverage: platform linux, python 3.11.15-final-0 ----------
+Name               Stmts   Miss  Cover   Missing
+------------------------------------------------
+app/__init__.py         0      0   100%
+app/analisis.py       116      0   100%
+app/anomalias.py       31      0   100%
+app/config.py          83      0   100%
+app/conteo.py          78      0   100%
+app/fotogramas.py      72      0   100%
+app/main.py            80      0   100%
+app/personas.py        80      0   100%
+app/schemas.py         57      0   100%
+------------------------------------------------
+TOTAL                 597      0   100%
+
+Required test coverage of 90% reached. Total coverage: 100.00%
+222 passed in 85.95s (0:01:25)
+
+
+Criterio 2 de HU-07 (precision >= 95 %)
+---------------------------------------
+Se mide aparte, con el modelo entrenado y el set de validacion sintetico:
+
+    python -m sim.validar
+
+Resultado del modelo actual, en reporte_validacion.txt:
+    8 cargas, 8 exactas, precision media 100.0 %, peor carga 100.0 %.
+
+La advertencia de la cabecera de ese reporte es parte del resultado: el set es
+sintetico y mide el contador, no el comportamiento del modelo con sacos de yute
+reales. La cifra de planta sale del piloto, con el dataset de HU-19.
+
+
+Lo que estas pruebas encontraron
+--------------------------------
+Midiendo el criterio 2 con el modelo entrenado, el conteo dio cero en las ocho
+cargas. El detector veia los sacos perfectamente (mAP50 0.994); era ByteTrack,
+que asocia por solapamiento, y con YOLO_FRAME_STRIDE=2 un saco avanzaba mas que
+su propio ancho entre un fotograma mirado y el siguiente, de modo que nunca
+recibia identificador y ningun cruce se contaba.
+
+Dos cambios salieron de ahi:
+  - el valor por defecto paso a 1, documentado en app/config.py;
+  - el fallo dejo de ser silencioso: cuando el detector ve objetos y el
+    rastreador no sigue ninguno, la respuesta trae un aviso y el log una linea
+    de error. Sin eso, un stride mal puesto devuelve cero y parece un camion sin
+    cargar, que es justo la conclusion que mandaria a alguien a la rampa por nada.
+
+
+HU-08: como se prueba el criterio 3
+-----------------------------------
+"No se realiza identificacion facial ni se guardan datos biometricos" no se
+comprueba leyendo el codigo y confiando. Hay pruebas que vigilan la forma de los
+datos, de modo que anadir un recorte de imagen o un descriptor facial rompa la
+suite antes de que eso salga de la red interna:
+
+  test_de_una_persona_solo_se_guardan_un_numero_y_unos_segundos
+      los campos de PersonaObservada son exactamente cuatro
+  test_lo_que_entra_al_seguidor_tampoco_lleva_imagen
+      el modulo recibe posiciones, no fotogramas
+  test_el_identificador_no_sobrevive_al_clip
+      dos clips son dos seguidores; el 1 de uno no es el 1 del otro
+  test_ninguna_regla_mira_quien_es_nadie
+      las reglas de anomalia se calculan con cuantos, cuanto y si hubo carga
+  test_los_motivos_no_nombran_a_nadie
+      los mensajes hablan de personas, no de una persona
+  (en el grabador y el orquestador) las mismas comprobaciones sobre las columnas
+      de persona_en_evento y sobre el JSON que devuelve la API
+
+Y una consecuencia asumida, tambien con su prueba:
+  test_una_persona_que_sale_y_vuelve_con_otro_id_se_cuenta_dos_veces
+      el sistema prefiere contar de mas a reconocer a alguien

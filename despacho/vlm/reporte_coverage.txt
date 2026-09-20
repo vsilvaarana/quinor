@@ -1,0 +1,68 @@
+Reporte de cobertura - Servicio de vision-lenguaje QUINOR (Alternativa 1)
+Generado: 2026-09-17
+Comando:  pytest --cov=app --cov-report=term-missing --cov-fail-under=90
+Alcance:  HU-09 descripcion del evento y severidad
+Entorno:  stub del proveedor por HTTP de verdad (sim/vlm_stub.py), con sus
+          cabeceras, sus codigos de error y su formato de respuesta. Las esperas
+          entre reintentos se inyectan para que la suite no tarde seis segundos
+          en verificar un backoff: una prueba lenta acaba desactivada.
+
+---------- coverage: platform linux, python 3.11.15-final-0 ----------
+Name                 Stmts   Miss  Cover   Missing
+---------------------------------------------------
+app/__init__.py          0      0   100%
+app/config.py           46      0   100%
+app/invocacion.py       37      0   100%
+app/main.py             75      0   100%
+app/prompt.py           29      0   100%
+app/proveedores.py      50      0   100%
+app/schemas.py          56      0   100%
+app/severidad.py        34      0   100%
+app/vlm.py             115      0   100%
+---------------------------------------------------
+TOTAL                  442      0   100%
+
+Required test coverage of 90% reached. Total coverage: 100.00%
+185 passed in 31.81s
+
+
+Lo que estas pruebas vigilan y no se ve en el porcentaje
+--------------------------------------------------------
+El criterio 3 dice "si la API falla se reintenta 3 veces". Lo que no dice, y
+donde estaria el fallo caro, es que no todos los fallos son iguales:
+
+  test_un_error_pasajero_se_reintenta_y_acaba_saliendo
+      un 429 se arregla esperando
+  test_una_clave_mala_no_se_reintenta
+      insistir con un 401 tres veces retrasa el error y, en un proveedor de
+      pago, se cobra cada intento
+  test_la_espera_entre_intentos_crece
+      un 429 no se arregla insistiendo mas rapido
+  test_una_respuesta_ilegible_se_reintenta
+      no es un fallo de red, pero puede salir bien al repetir
+
+Y el criterio 2 dice "la respuesta es un JSON". Un modelo devuelve muchas cosas
+que se parecen a eso sin serlo, y guardar cualquiera de ellas en la tabla seria
+peor que un evento en Pendiente de analisis: el segundo se ve, el primero no.
+
+  test_un_json_dentro_de_un_bloque_de_codigo_se_acepta
+  test_una_frase_antes_del_json_no_lo_estropea
+  test_las_severidades_equivalentes_se_traducen    (high/medium/low)
+  test_una_severidad_inventada_se_rechaza          (critica, urgente, 3)
+  test_una_confianza_ilegible_se_asume_nula
+
+Sobre el prompt (apartado 9.2)
+------------------------------
+El apartado manda revisarlo cuando la concordancia con el supervisor baje del
+85 %. tests/test_prompt.py fija lo que no puede desaparecer en esa revision:
+
+  el contexto de planta, sin el cual el modelo describe un camion y unos sacos;
+  la prohibicion de describir personas (RN-08 y Ley 29733);
+  la instruccion de llamar normal a lo normal, sin la cual el aviso salta
+      siempre y deja de leerse.
+
+Lo que queda pendiente
+----------------------
+La clave de un proveedor real. Todo esta probado contra el stub, que habla el
+mismo dialecto; la primera llamada a un proveedor de verdad queda a la espera de
+que QUINOR decida cual y provea la clave.

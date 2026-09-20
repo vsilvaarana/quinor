@@ -1,0 +1,14 @@
+# =============================================================================
+# Dependencias solo de desarrollo y pruebas. No se instalan en produccion.
+# =============================================================================
+-r requirements.txt
+
+pytest==8.3.4
+pytest-cov==6.0.0                  # Cobertura exigida por el RNF-05.
+ruff==0.8.4                        # Formato y linting.
+moto[server]==5.2.3                # Servidor S3 de pruebas para HU-06. El cliente
+                                   # de MinIO habla con el igual que con MinIO.
+
+# Las pruebas de grabacion necesitan ademas ffmpeg, ffprobe y un servidor RTSP
+# (mediamtx). En el compose lo aporta el servicio rtsp-server; en local, la
+# variable MEDIAMTX_BIN. Sin el, esas pruebas se saltan y lo dicen.
