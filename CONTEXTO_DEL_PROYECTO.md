@@ -5,7 +5,7 @@
 > que, y lo que falta. Esta escrito para que una sesion que empieza de cero
 > pueda continuar sin repetir trabajo ni contradecir lo ya construido.
 >
-> Ultima actualizacion: **19/09/2026**, al cerrar HU-10.
+> Ultima actualizacion: **23/09/2026**, al definir el MVP de 14 historias.
 
 ---
 
@@ -35,7 +35,7 @@ distintas:
 | Archivo | Que contiene |
 |---|---|
 | `Documento_Funcional_Tecnico_Alternativa1_QUINOR.docx` | Especificacion funcional y tecnica, v1.2. Es la fuente de verdad de requisitos |
-| `Backlog_Seguimiento_Alternativa1_QUINOR.xlsx` | Las 20 historias, su estado, puntos y dependencias |
+| `Backlog_Seguimiento_Alternativa1_QUINOR.xlsx` | Hoja `Historias`: las 14 del MVP. Hoja `Backlog`: las 6 postergadas. Estado, puntos y dependencias |
 | `despacho/api/db/01_esquema.sql` | Fuente de verdad del modelo de datos |
 | `despliegue/LEEME.md` | Como desplegar la base en el hosting |
 
@@ -45,11 +45,32 @@ referencias son deliberadas: permiten volver del codigo al requisito.
 
 ---
 
-## 2. Estado del backlog
+## 2. Estado del backlog y alcance del MVP
 
-**10 de 20 historias DONE.** Todo el nucleo de captura, deteccion y analisis
-esta construido y probado. Lo que falta es, sobre todo, la capa de presentacion
-y los extras.
+**MVP definido el 23/09/2026: 14 historias, 51 de 68 pts. 11 DONE (43 pts), 3
+por hacer (8 pts).** El MVP cierra el ciclo detectar, alertar, verificar y
+decidir. El limite no es arbitrario: la salida del piloto (apartado 10.1) exige
+menos de 20 % de falsos positivos, y la concordancia de severidad (apartado 2.4)
+exige 85 %. Las dos cifras solo se pueden medir con el veredicto del supervisor
+(HU-13), que arrastra a HU-12 y HU-11.
+
+### Renumeracion del 23/09/2026
+
+Para que la hoja `Historias` no tenga huecos se intercambiaron dos IDs. **El
+codigo, los README, las pruebas y el esquema SQL aun usan la numeracion
+antigua**: donde el codigo diga HU-15 se refiere a usuarios y tokens.
+
+| Antes | Ahora | Historia | Hoja |
+|---|---|---|---|
+| HU-15 | **HU-14** | Usuarios, roles y tokens | Historias (MVP) |
+| HU-14 | **HU-15** | Reportes PDF y Excel | Backlog |
+
+Otros cambios del mismo dia en el Excel: HU-12 y HU-13 pasaron del Sprint 3 al
+Sprint 4 (HU-12 dependia de HU-09, que es del Sprint 4), y se corrigio la columna
+"Dependencia cruzada" de HU-03 y HU-16. La copia previa quedo en
+`Backlog_Seguimiento_Alternativa1_QUINOR_antes_MVP.xlsx`.
+
+### Hoja Historias: el MVP
 
 | HU | Sprint | Categoria | Pts | Estado | Donde vive |
 |---|---|---|---|---|---|
@@ -63,22 +84,27 @@ y los extras.
 | HU-08 Personas en zona de carga | 4 | IA | 5 | **DONE** | `despacho/yolo` + grabador |
 | HU-09 Descripcion y severidad (VLM) | 4 | IA | 5 | **DONE** | `despacho/vlm` + grabador |
 | HU-10 Alerta por correo | 4 | Alertas | 3 | **DONE** | `despacho/notificaciones` |
-| HU-15 Usuarios, roles y tokens | 1 | Seguridad | 3 | **DONE** | `despacho/api` |
 | HU-11 Lista de eventos con filtros | 2 | Dashboard | 3 | NEW | pendiente |
-| HU-12 Detalle del evento | 3 | Dashboard | 3 | PENDING | pendiente |
-| HU-13 Clasificar evento | 3 | Dashboard | 2 | PENDING | pendiente |
-| HU-14 Reportes PDF y Excel | 5 | Reportes | 3 | PENDING | pendiente |
-| HU-16 Auditoria consultable | 4 | Seguridad | 2 | PENDING | pendiente |
-| HU-17 Cola de tareas (Celery) | 1 | Plataforma | 3 | PENDING | pendiente |
-| HU-18 Panel de salud | 5 | Plataforma | 3 | PENDING | pendiente |
-| HU-19 Reentrenamiento YOLO | 5 | IA | 5 | PENDING | pendiente |
-| HU-20 Exportar listado | 5 | Reportes | 1 | PENDING | pendiente |
+| HU-12 Detalle del evento | 4 | Dashboard | 3 | PENDING | pendiente |
+| HU-13 Clasificar evento | 4 | Dashboard | 2 | PENDING | pendiente |
+| HU-14 Usuarios, roles y tokens (antes HU-15) | 1 | Seguridad | 3 | **DONE** | `despacho/api` |
 
-**HU-11 es la siguiente candidata natural.** Es NEW, no PENDING: su unica
-dependencia (HU-03) esta DONE, y desbloquea HU-12, HU-13, HU-14 y HU-20, que es
-casi todo lo que queda. Buena parte de su trabajo ya esta hecho sin haberlo
-buscado: la vista `v_evento_dashboard` existe, `GET /eventos` responde con
-filtros basicos, y la pestana Eventos del dashboard ya los muestra.
+### Hoja Backlog: postergadas fuera del MVP
+
+| HU | Pts | Motivo |
+|---|---|---|
+| HU-15 Reportes PDF y Excel (antes HU-14) | 3 | Mide tendencias de semanas, no valida el MVP |
+| HU-16 Auditoria consultable | 2 | Criterios 1 y 3 ya los cumple el motor; falta solo mostrarla |
+| HU-17 Cola de tareas (Celery) | 3 | El bucle del grabador hace de worker; criterio 2 depende de HU-18 |
+| HU-18 Panel de salud | 3 | Depende de HU-17; `GET /salud` ya registra los fallos |
+| HU-19 Reentrenamiento YOLO | 5 | Espera el dataset real de QUINOR |
+| HU-20 Exportar listado | 1 | Could, la menor prioridad |
+
+**HU-11 es la siguiente.** Es NEW, no PENDING: su unica dependencia (HU-03) esta
+DONE, y desbloquea HU-12 y HU-13, lo que falta del MVP (y en el Backlog, HU-15 y
+HU-20). Buena parte de su trabajo ya esta hecho sin haberlo buscado: la vista
+`v_evento_dashboard` existe, `GET /eventos` responde con filtros basicos, y la
+pestana Eventos del dashboard ya los muestra.
 
 **HU-17 sigue PENDING a peticion del usuario.** Sustituiria el sondeo por una
 cola Celery. Mientras no llegue, el bucle del grabador hace de worker. El codigo
@@ -102,7 +128,7 @@ sola base de datos.
    |  FastAPI, puerto 8000                |   |  proceso, sin HTTP       |
    |  HU-01 pesadas    HU-02 ordenes      |   |  HU-05 buffer 72 h       |
    |  HU-03 eventos    HU-04 tolerancias  |   |  HU-06 recorte del clip  |
-   |  HU-15 usuarios y tokens             |   |  Orquesta 07, 08, 09, 10 |
+   |  HU-14 usuarios y tokens             |   |  Orquesta 07, 08, 09, 10 |
    +--------------------------------------+   +--------------------------+
                     |                              |        |         |
                     |                              v        v         v
@@ -183,8 +209,8 @@ de reintento en el bucle, para lo que fallo.
 | Modelo VLM | httpx contra Anthropic u OpenAI | HU-09, adaptador por proveedor |
 | Correo | aiosmtplib | HU-10, apartado 6.4 |
 | Almacen | MinIO (S3) | Clips y fotogramas, 12 meses |
-| Dashboard | Streamlit + pandas | HU-04, HU-15 y detalle de eventos |
-| Seguridad | passlib[bcrypt], tokens opacos | HU-15 |
+| Dashboard | Streamlit + pandas | HU-04, HU-14 y detalle de eventos |
+| Seguridad | passlib[bcrypt], tokens opacos | HU-14 |
 | Observabilidad | structlog (JSON) | Los cinco servicios |
 | Pruebas | pytest, pytest-cov, aiosmtpd, moto | Umbral 90 %, real 100 % |
 | Contenedores | Docker Compose, 16 servicios | `despacho/api/docker-compose.yml` |
@@ -209,7 +235,7 @@ quinor/
   Backlog_Seguimiento_Alternativa1_QUINOR.xlsx
   despliegue/                       paquete para el hosting (ver seccion 9)
   despacho/
-    api/                  orquestador: HU-01, 02, 03, 04, 06(marca), 15
+    api/                  orquestador: HU-01, 02, 03, 04, 06(marca), 14
       app/                main.py y un modulo por caso de uso
       db/01_esquema.sql   FUENTE DE VERDAD del modelo de datos
       dashboard/app.py    interfaz Streamlit
@@ -477,10 +503,10 @@ guarda en MinIO junto al clip, y `evento.fotogramas_clave` tiene sus URLs.
 **HU-13, clasificar.** Aqui entra la RN-05 (comentario obligatorio) y se escribe
 en `veredicto`. El trigger de RN-06 ya protege el retroceso.
 
-**HU-17, cola de tareas.** Redis ya esta en el compose. El codigo esta preparado
+**HU-17, cola de tareas (hoja Backlog, fuera del MVP).** Redis ya esta en el compose. El codigo esta preparado
 para que solo cambie quien llama.
 
-**HU-19, reentrenamiento.** `yolo/sim/entrenar.py` y `validar.py` ya existen. La
+**HU-19, reentrenamiento (hoja Backlog, fuera del MVP).** `yolo/sim/entrenar.py` y `validar.py` ya existen. La
 tabla `modelo_version` tambien. Falta el dataset de planta: lo que hay es
 sintetico, y el reporte de validacion lo dice con todas las letras.
 
