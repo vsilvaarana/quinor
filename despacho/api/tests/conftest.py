@@ -24,7 +24,7 @@ from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker
 
 from app.main import create_app
@@ -79,6 +79,34 @@ ORDEN_ERP = {
     "sacos_esperados": 400,
     "fecha": "2026-09-14",
 }
+
+
+class ContadorDeConsultas:
+    """Cuenta las sentencias que llegan al motor dentro del bloque.
+
+    Es la red que protege la regla de la casa: ninguna pantalla lee por fila.
+    La usan la bandeja de HU-11 y el detalle de HU-12, que son las dos lecturas
+    con un techo de tiempo encima, y la regresion que las hundiria (un acceso
+    por fila) es silenciosa hasta que hay volumen.
+    """
+
+    def __init__(self, motor):
+        self.motor = motor
+        self.sentencias: list[str] = []
+
+    def __enter__(self):
+        event.listen(self.motor, "before_cursor_execute", self._anotar)
+        return self
+
+    def __exit__(self, *_):
+        event.remove(self.motor, "before_cursor_execute", self._anotar)
+
+    def _anotar(self, conexion, cursor, sentencia, *_args):
+        if sentencia.lstrip().upper().startswith("SELECT"):
+            self.sentencias.append(sentencia)
+
+    def __len__(self):
+        return len(self.sentencias)
 
 
 # ---------------------------------------------------------------- base de datos

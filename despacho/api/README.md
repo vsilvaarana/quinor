@@ -19,6 +19,16 @@ Referencia funcional: `Documento_Funcional_Tecnico_Alternativa1_QUINOR.docx` v1.
 | HU-15 | Usuarios, roles y autenticacion por token | **DONE** |
 | HU-17 | Cola de tareas con reintentos | PENDING, depende de HU-03 (Sprint 2) |
 
+> **Numeracion de las historias.** El Excel de seguimiento intercambio HU-14 y
+> HU-15 el 03/10/2026, al definir el MVP de 14 historias: alli HU-14 es usuarios
+> y tokens, y HU-15 es reportes. Este repositorio conserva a proposito la
+> numeracion del documento funcional v1.2, que es la fuente de verdad de
+> requisitos: **donde el codigo, las pruebas, el esquema SQL o estos README digan
+> HU-15, se refieren a usuarios, roles y tokens, y HU-14 es el reporte semanal.**
+> No se renumero nada porque serian 51 menciones en 15 archivos sin un solo
+> cambio de comportamiento. La tabla de equivalencias esta en
+> `CONTEXTO_DEL_PROYECTO.md`, apartado 2.
+
 Total computable: 11 puntos de los 14 planificados, los 11 entregados. Los 3
 restantes son HU-17, excluida por depender de HU-03, del Sprint 2.
 
@@ -29,6 +39,8 @@ Adelantado del Sprint 2:
 | HU-03 | Evento de discrepancia por diferencia de peso | **DONE** | esta API |
 | HU-05 | Grabacion continua de camaras en buffer circular | **DONE** | `quinor/despacho/grabador` |
 | HU-06 | Recorte del clip de la ventana de la carga | **DONE** | marca de carga aqui, recorte en el grabador |
+| HU-11 | Bandeja de eventos con filtros combinados | **DONE** | esta API y el dashboard |
+| HU-12 | Detalle del evento, con clip y fotogramas (Sprint 4) | **DONE** | esta API y el dashboard |
 
 HU-03 estaba bloqueada por HU-01, HU-02 y HU-04, las tres del Sprint 1. Al
 cerrarse el sprint quedo desbloqueada y se entrego. Con ella el circulo se
@@ -348,6 +360,56 @@ recorta y se analiza. La pantalla con filtros combinados y respuesta en 2 s es
 HU-11; la de este sprint es la lista tal cual, en la pestana Eventos del
 dashboard.
 
+## HU-11: la bandeja de eventos (DONE)
+
+La pantalla donde el supervisor empieza su turno: la lista de eventos con
+filtros por fecha, orden, severidad y estado.
+
+| Criterio | Como se cumple | Donde se prueba |
+|---|---|---|
+| 1. ID, fecha, orden, diferencia, severidad y estado | `app/bandeja.py`, una fila por evento con esas columnas y las de HU-07 a HU-09 | `test_la_fila_trae_las_columnas_que_pide_el_criterio` |
+| 2. Filtros combinados, menos de 2 s | Una consulta de conteo y una de filas, siempre dos | `test_la_bandeja_no_crece_en_consultas`, `test_con_volumen_la_bandeja_responde_dentro_del_criterio` |
+| 3. Por defecto, Pendientes de los ultimos 7 dias | `resolver_filtros`, y la respuesta declara que los puso el sistema | `test_sin_filtros_se_ven_los_pendientes_de_la_ultima_semana` |
+
+### Lo que esta historia encontro
+
+El listado que existia armaba **cada fila con cuatro consultas**: la pesada, la
+orden y dos lecturas de auditoria para recuperar la tolerancia aplicada y la
+ventana del clip. Con 200 filas son mas de 800 consultas. Medido contra 800
+eventos sembrados:
+
+| Listado | Mediana | Consultas |
+|---|---|---|
+| `GET /eventos?limite=200` | 0,55 s | ~801 |
+| `GET /eventos/bandeja?tamano=200` | 0,02 s | 2 |
+
+Hoy cumpliria el criterio igual, pero crece con el numero de filas, y la
+pantalla que mas se usa es la que peor envejece. `test_la_bandeja_no_crece_en_consultas`
+cuenta las sentencias que llegan al motor y falla si alguien vuelve a leer algo
+por fila.
+
+### Por que una ruta nueva y no ampliar GET /eventos
+
+Son dos cosas distintas. `/eventos/{id}` devuelve el evento completo, con lo que
+cuesta reunirlo, y se paga una vez. `/eventos/bandeja` devuelve lo justo que la
+tabla pinta, paginado y rapido. Mezclarlas obligaria a elegir entre una lista
+lenta o un detalle incompleto.
+
+La tolerancia aplicada y la ventana del clip **no estan en la fila** por eso
+mismo: salen de la auditoria y cuestan una consulta cada una.
+
+### El valor por defecto se declara
+
+La respuesta trae `filtros.por_defecto` con los filtros que puso el sistema y no
+el usuario, y la pantalla lo dice: "Vista por defecto: solo los Pendientes de
+los ultimos 7 dias". Sin ese aviso, un supervisor que entra y ve tres eventos
+puede irse creyendo que son todos los que existen. El aviso es la mitad util del
+valor por defecto.
+
+Los defectos se aplican por campo y no en bloque: pedir "todas las Altas" libera
+el defecto de Pendiente, porque quien busca eso las quiere ver en cualquier
+estado. `sin_defectos=true` desactiva los dos, y es explicito a proposito.
+
 ### HU-10: se aviso de esto, o no (DONE, la parte de consulta)
 
 Mandar el correo es trabajo del servicio de notificaciones
@@ -368,6 +430,93 @@ aviso. Esa es la parte util: un evento Alto sin correo enviado es un fallo que
 de otro modo solo se veria en los logs del grabador, y quien tiene que enterarse
 es el supervisor que esta delante de la pantalla preguntandose por que nadie le
 dijo nada.
+
+## HU-12: el detalle del evento (DONE)
+
+Donde el supervisor verifica con sus ojos lo que reporto el sistema: los pesos y
+el conteo, el clip reproduciendose y el fotograma de la anomalia.
+
+| Criterio | Como se cumple | Donde se prueba |
+|---|---|---|
+| 1. Pesos, conteo de sacos, personas, descripcion y severidad | `app/detalle.py` arma las cinco cosas en una respuesta | `test_el_detalle_trae_las_cinco_cosas_del_criterio_1` |
+| 2. El clip se reproduce con pausa y avance | Enlace firmado a MinIO y `st.video` en el dashboard | `test_el_clip_llega_firmado_y_listo_para_el_reproductor`, verificado ademas en un navegador real |
+| 3. Se muestra el fotograma de la anomalia | `fotogramas_clave` firmados y ordenados por prioridad | `test_la_anomalia_es_el_saco_que_sale_y_no_el_primero_de_la_carga` |
+
+`GET /eventos/{id}/detalle`. Tres consultas fijas, las mismas con una presencia
+que con cuarenta, y `test_el_detalle_no_crece_en_consultas` las cuenta:
+
+1. el evento con su pesada y su orden, de un JOIN;
+2. las presencias de HU-08;
+3. la auditoria, de donde salen la tolerancia de aquel dia y la ventana que el
+   grabador recorto de verdad.
+
+### La API firma el video, no lo sirve
+
+Un clip de siete minutos pesa decenas de megas y el navegador no lo pide entero:
+pide rangos, uno nuevo cada vez que el supervisor adelanta. Servirlo desde la
+API ocuparia un trabajador de uvicorn durante toda la reproduccion. MinIO habla
+S3 y sabe responder por rangos, asi que sirve el video quien sabe hacerlo y la
+API solo firma un enlace que caduca a los quince minutos.
+
+**La firma tiene que ser local, y no lo es por defecto.** Si el cliente de MinIO
+no sabe en que region vive el bucket, antes de firmar se lo pregunta al servidor
+con un `GET ?location=`. Entonces firmar deja de ser una cuenta con HMAC y se
+convierte en una llamada de red: con MinIO caido, el detalle del evento se queda
+esperando una respuesta que no llega, y lo que sale por arriba no es un error de
+S3 sino un `MaxRetryError` de urllib3. De ahi `MINIO_REGION`, que se pasa al
+construir el cliente, y de ahi que `app/almacen.py` atrape tambien los errores de
+urllib3. `test_firma_un_enlace_sin_salir_a_la_red` lo comprueba apuntando a un
+host que no resuelve: si alguien quita la region, esa prueba se cae.
+
+### El hueco explica por que esta vacio
+
+Nada de esto lanza una excepcion. Un detalle que se cae por un video seria el
+peor resultado posible: el supervisor tiene delante una discrepancia de peso que
+existe de verdad y la pantalla se quedaria en blanco por la parte accesoria. El
+enlace viaja con un `motivo` estable y una `explicacion` en castellano, y la
+pantalla la escribe en el hueco del reproductor:
+
+| motivo | Que paso |
+|---|---|
+| `sin_objeto` | El evento no tiene clip. El `motivo_sin_clip` del grabador dice si fue la camara o el buffer |
+| `direccion_invalida` | Lo guardado no tiene forma de `s3://bucket/objeto` |
+| `almacen_no_configurado` | La instalacion no tiene credenciales de MinIO. El objeto existe, no se puede enlazar |
+| `no_se_pudo_firmar` | El almacen rechazo la firma. El clip sigue ahi |
+
+### Matroska y el navegador
+
+El grabador escribe `.mkv` a proposito: con `-c copy` y el muxer segment, un
+corte de luz no se lleva el fichero entero, que es justo lo que hara falta el
+dia que se corte. El precio lo paga esta pantalla, porque Matroska lo
+reproducen Chrome y Edge pero no Firefox ni Safari. El detalle devuelve
+`clip.formato` y el dashboard lo advierte en lugar de dejar un recuadro negro
+sin explicacion. Comprobado en Chromium: el contenedor se reproduce y se puede
+adelantar dentro de el, siempre que el servidor atienda peticiones `Range`,
+cosa que MinIO hace.
+
+Si manana hay que abrirlo en Firefox, la salida es remuxar a MP4 fragmentado al
+vuelo, que no reencodifica. No se ha hecho aqui porque cambiaria lo que el
+grabador guarda, que es HU-06.
+
+### Criterio 3: cual es "el" fotograma
+
+HU-09 guarda hasta cuatro, cada uno con su motivo. El de la anomalia se elige
+por prioridad y no por orden de aparicion: entre un saco que sale y el primer
+saco de la carga, lo que hay que mirar primero es el que sale. Si ninguno es una
+anomalia se abre el de mayor prioridad igualmente, porque "este es el momento
+mas relevante del clip" sigue siendo mejor que no abrir ninguno. El reproductor
+arranca en ese segundo, y cada fotograma tiene un boton que lleva el video a su
+momento: sin eso, el supervisor busca a mano el instante dentro de siete minutos
+de video.
+
+### Lo que este detalle no tiene
+
+Nada que identifique a una persona. De cada presencia salen el numero temporal
+que asigno el rastreador dentro de ese clip y el tiempo en zona, y nada mas: la
+RN-08 y el apartado 8 prohiben la identificacion facial y los datos biometricos.
+Esta es la pantalla donde esa tentacion seria mas grande, asi que
+`test_el_detalle_no_lleva_nada_que_identifique_a_nadie` revisa el payload campo
+por campo.
 
 ## HU-06: la marca de inicio de carga (DONE)
 
@@ -677,6 +826,9 @@ quinor/
       ordenes.py      caso de uso de ordenes con cache (HU-02)
       configuracion.py tolerancias por producto y RN-01 (HU-04)
       eventos.py      evento de discrepancia (HU-03)
+      bandeja.py      listado con filtros y paginacion (HU-11)
+      detalle.py      detalle del evento con clip y fotogramas (HU-12)
+      almacen.py      enlaces firmados a MinIO, solo firma (HU-12)
       cargas.py       marca de inicio de carga (HU-06)
       seguridad.py    hash de contrasenas y tokens opacos (HU-15)
       usuarios.py     caso de uso de usuarios, roles y tokens (HU-15)

@@ -1363,3 +1363,126 @@ def test_los_avisos_piden_autenticacion(client):
     client.headers.pop("X-API-Key")
 
     assert client.get("/eventos/1/avisos").status_code == 401
+
+
+# ---------- HU-11: la bandeja de eventos ----------
+
+def sembrar_bandeja(sesion, **kwargs):
+    """Atajo: la siembra vive en test_bandeja para no duplicarla."""
+    from tests.test_bandeja import sembrar
+
+    return sembrar(sesion, **kwargs)
+
+
+def test_la_bandeja_sin_filtros_trae_los_pendientes_de_la_semana(client, sesion):
+    """Criterio 3, visto desde la API."""
+    sembrar_bandeja(sesion, cuantos=2, dias_atras=1)
+    sembrar_bandeja(sesion, cuantos=3, dias_atras=30,
+                    numero_orden="ORD-2026-0148")
+
+    cuerpo = client.get("/eventos/bandeja").json()
+
+    assert cuerpo["total"] == 2
+    assert cuerpo["filtros"]["estado"] == "pendiente"
+    assert set(cuerpo["filtros"]["por_defecto"]) == {"estado", "desde"}
+
+
+def test_la_bandeja_dice_cuanto_tardo(client, sesion):
+    """Criterio 2. La cifra viaja en la respuesta para que no haya que creerla."""
+    sembrar_bandeja(sesion, cuantos=5, dias_atras=1)
+
+    cuerpo = client.get("/eventos/bandeja").json()
+
+    assert cuerpo["segundos"] > 0
+    assert cuerpo["dentro_del_criterio"] is True
+
+
+def test_los_filtros_de_la_bandeja_se_combinan_por_query(client, sesion):
+    sembrar_bandeja(sesion, cuantos=1, dias_atras=1, severidad="alta",
+                    diferencia_sacos=-8, sacos_contados=392,
+                    numero_orden="ORD-2026-0148")
+    sembrar_bandeja(sesion, cuantos=1, dias_atras=1, severidad="baja",
+                    numero_orden="ORD-2026-0777")
+
+    cuerpo = client.get("/eventos/bandeja", params={
+        "severidad": "alta", "numero_orden": "0148",
+        "solo_con_faltante": True}).json()
+
+    assert cuerpo["total"] == 1
+    assert cuerpo["filas"][0]["numero_orden"] == "ORD-2026-0148"
+
+
+def test_la_bandeja_pagina(client, sesion):
+    sembrar_bandeja(sesion, cuantos=60, dias_atras=1)
+
+    cuerpo = client.get("/eventos/bandeja",
+                        params={"tamano": 25, "pagina": 2}).json()
+
+    assert cuerpo["total"] == 60
+    assert len(cuerpo["filas"]) == 25
+    assert (cuerpo["desde_fila"], cuerpo["hasta_fila"]) == (26, 50)
+    assert cuerpo["paginas"] == 3
+
+
+def test_la_fila_de_la_bandeja_no_arrastra_el_detalle(client, sesion):
+    """Criterio 2: la fila lleva lo que la tabla pinta y nada mas. La tolerancia
+    aplicada y la ventana del clip cuestan una consulta por fila y viven en
+    GET /eventos/{id}."""
+    sembrar_bandeja(sesion, cuantos=1, dias_atras=1)
+
+    fila = client.get("/eventos/bandeja").json()["filas"][0]
+
+    assert "tolerancia_aplicada_kg" not in fila
+    assert "clip_desde" not in fila
+    assert "descripcion_ia" not in fila
+    assert {"id", "creado_en", "numero_orden", "diferencia_kg", "severidad",
+            "estado"} <= set(fila)
+
+
+def test_la_bandeja_no_se_confunde_con_el_detalle_de_un_evento(client, sesion):
+    """La ruta /eventos/bandeja convive con /eventos/{id}. Si el orden de
+    declaracion fuera el otro, "bandeja" se interpretaria como un id."""
+    sembrar_bandeja(sesion, cuantos=1, dias_atras=1)
+
+    assert client.get("/eventos/bandeja").status_code == 200
+    assert client.get("/eventos/999999").status_code == 404
+
+
+def test_un_filtro_invalido_en_la_bandeja_explica_que_corregir(client):
+    respuesta = client.get("/eventos/bandeja", params={"estado": "inventado"})
+
+    assert respuesta.status_code == 422
+    assert "Estado" in respuesta.json()["detail"]
+
+
+def test_la_bandeja_pide_autenticacion(client):
+    client.headers.pop("X-API-Key")
+
+    assert client.get("/eventos/bandeja").status_code == 401
+
+
+def test_el_resumen_de_la_bandeja_viaja_en_la_respuesta(client, sesion):
+    sembrar_bandeja(sesion, cuantos=2, dias_atras=1, severidad="alta",
+                    diferencia_sacos=-8, sacos_contados=392,
+                    personal_anomalo=True)
+
+    resumen = client.get("/eventos/bandeja").json()["resumen"]
+
+    assert resumen["altas"] == 2
+    assert resumen["con_faltante_de_sacos"] == 2
+    assert resumen["con_personal_anomalo"] == 2
+
+
+def test_la_api_avisa_cuando_la_bandeja_sale_del_criterio(client, sesion,
+                                                          monkeypatch):
+    """Criterio 2. Con el limite en cero, cualquier consulta queda fuera: lo que
+    se comprueba es que la respuesta lo declare para que la pantalla lo muestre."""
+    from app import bandeja
+
+    sembrar_bandeja(sesion, cuantos=2, dias_atras=1)
+    monkeypatch.setattr(bandeja, "SEGUNDOS_DEL_CRITERIO", 0.0)
+
+    cuerpo = client.get("/eventos/bandeja").json()
+
+    assert cuerpo["dentro_del_criterio"] is False
+    assert cuerpo["total"] == 2

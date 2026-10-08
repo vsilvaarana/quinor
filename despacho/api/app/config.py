@@ -10,7 +10,7 @@ Seccion 8 del documento funcional: ningun secreto vive en el codigo.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # Marcador de desarrollo. No es un secreto: sirve para que docker compose up
 # funcione sin configuracion previa, y el arranque avisa cuando sigue en uso.
@@ -47,6 +47,26 @@ class Ajustes:
     # cambia cada minuto. 0 desactiva la cache y consulta siempre.
     erp_cache_ttl_seconds: float = 900.0
 
+    # HU-12 almacen. El clip y los fotogramas los sube el grabador a MinIO y el
+    # evento guarda su direccion s3://, que un navegador no sabe pedir. La API
+    # no sirve el video: lo firma para que el navegador lo pida a MinIO, que es
+    # quien sabe responder por rangos cuando el supervisor adelanta.
+    minio_endpoint: str = "minio:9000"
+    minio_access_key: str = ""
+    # repr=False por el apartado 8: un volcado de ajustes en un log no debe
+    # llevarse la clave del almacen por delante.
+    minio_secret_key: str = field(default="", repr=False)
+    minio_seguro: bool = False
+    # La region tiene que venir fijada. Sin ella, el cliente la pregunta al
+    # servidor antes de firmar (un GET ?location=), y entonces firmar un enlace
+    # dejaria de ser una cuenta local: con MinIO caido, el detalle del evento se
+    # quedaria esperando una respuesta que no llega. 'us-east-1' es la region que
+    # MinIO usa por defecto.
+    minio_region: str = "us-east-1"
+    # Caducidad del enlace firmado. Corta a proposito: sirve para revisar un
+    # caso, no para repartir evidencia por correo.
+    clip_url_minutos: int = 15
+
     # Entorno
     app_env: str = "development"
     log_level: str = "INFO"
@@ -54,6 +74,15 @@ class Ajustes:
     @property
     def clave_por_defecto_en_uso(self) -> bool:
         return self.admin_password == CLAVE_DESARROLLO
+
+    @property
+    def almacen_configurado(self) -> bool:
+        """Sin credenciales no hay nada que firmar, y conviene saberlo antes.
+
+        Mismo criterio que el grabador: el endpoint tiene un valor por defecto
+        util en desarrollo, pero las claves no se inventan.
+        """
+        return bool(self.minio_access_key and self.minio_secret_key)
 
     @property
     def sin_administrador_inicial(self) -> bool:
@@ -85,6 +114,15 @@ def cargar_ajustes(**sobrescrituras) -> Ajustes:
         "erp_base_url": _env("ERP_BASE_URL", "http://erp-mock:8001"),
         "erp_timeout_seconds": float(_env("ERP_TIMEOUT_SECONDS", 5.0)),
         "erp_cache_ttl_seconds": float(_env("ERP_CACHE_TTL_SECONDS", 900.0)),
+        "minio_endpoint": _env("MINIO_ENDPOINT", "minio:9000"),
+        "minio_access_key": _env("MINIO_ACCESS_KEY", ""),
+        "minio_secret_key": _env("MINIO_SECRET_KEY", ""),
+        # Mismos nombres de variable que el grabador: las dos mitades del
+        # sistema leen el mismo almacen y un .env por servicio con nombres
+        # distintos se desincroniza el dia que alguien rota la clave.
+        "minio_seguro": _env("MINIO_SECURE", "false").lower() in ("1", "true", "si", "yes"),
+        "minio_region": _env("MINIO_REGION", "us-east-1"),
+        "clip_url_minutos": int(_env("CLIP_URL_MINUTOS", 15)),
         "app_env": _env("APP_ENV", "development"),
         "log_level": _env("LOG_LEVEL", "INFO"),
     }
