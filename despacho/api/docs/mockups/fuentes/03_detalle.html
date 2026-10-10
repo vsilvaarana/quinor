@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>Detalle del evento · boceto QUINOR</title>
+<style>
+:root{ --tinta:#4a4a4a; --tinta-suave:#8a8a8a; --papel:#fbfaf6; --relleno:#e8e6e0; }
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:34px 30px 44px;
+  background:
+    repeating-linear-gradient(0deg,#e9e7df 0 1px,transparent 1px 22px),
+    repeating-linear-gradient(90deg,#e9e7df 0 1px,transparent 1px 22px);
+  background-color:var(--papel);
+  font-family:"Liberation Mono","DejaVu Sans Mono",monospace; color:var(--tinta);
+}
+.hoja{max-width:1400px; margin:0 auto; display:flex; gap:30px; align-items:flex-start;}
+.cuerpo{flex:1; min-width:0; position:relative;}
+
+.caja{position:relative; padding:14px 16px;}
+.trazo{position:absolute; inset:0; border:2px solid var(--tinta); border-radius:4px;
+       filter:url(#rugoso); pointer-events:none;}
+.trazo.fino{border-width:1.4px; border-color:var(--tinta-suave);}
+.trazo.doble{border-style:double; border-width:4px;}
+.trazo.punteado{border-style:dashed; border-width:1.4px; border-color:var(--tinta-suave);}
+
+.sello{position:absolute; top:-10px; right:0; transform:rotate(-4deg);
+       font-size:13px; letter-spacing:3px; color:#9a4a3a; border:2px solid #9a4a3a;
+       padding:5px 12px; border-radius:3px; filter:url(#rugoso);}
+h1{font-size:17px; margin:0 0 4px; letter-spacing:1px;}
+.sub{font-size:12px; color:var(--tinta-suave); margin-bottom:18px;}
+.pie-hoja{margin-top:24px; font-size:11.5px; color:var(--tinta-suave); line-height:1.6;}
+
+.fila{display:flex; gap:14px; margin-bottom:14px; align-items:stretch;}
+.col{flex:1; min-width:0;}
+
+.barra{height:9px; background:var(--relleno); border-radius:2px; margin:5px 0;}
+.barra.corta{width:45%;} .barra.media{width:70%;} .barra.larga{width:92%;}
+
+.etiqueta{font-size:11px; letter-spacing:1.5px; text-transform:uppercase;
+          color:var(--tinta-suave); margin-bottom:6px;}
+.cifra{font-size:23px; letter-spacing:-0.5px;}
+.cifra small{font-size:12px; color:var(--tinta-suave);}
+.nota{font-size:11px; color:var(--tinta-suave); line-height:1.55;}
+.texto{font-size:12.5px; line-height:1.6;}
+
+.marco-media{position:relative; display:flex; align-items:center;
+             justify-content:center; font-size:12px; letter-spacing:2px;
+             color:var(--tinta-suave); text-align:center;}
+.aspa{position:absolute; inset:0; width:100%; height:100%; filter:url(#rugoso);}
+.aspa line{stroke:var(--tinta-suave); stroke-width:1.2;}
+
+.pastilla{display:inline-block; padding:5px 12px; font-size:11px;
+          letter-spacing:1px; position:relative; margin-right:6px;}
+.pastilla.apagada{opacity:.5;}
+
+.campo{position:relative; padding:11px 12px; font-size:12px; min-height:40px;}
+.campo .rotulo{position:absolute; top:-8px; left:9px; background:var(--papel);
+               padding:0 6px; font-size:10px; letter-spacing:1.2px;
+               text-transform:uppercase; color:var(--tinta-suave);}
+.campo .flecha{position:absolute; right:12px; top:12px; color:var(--tinta-suave);}
+.campo.apagado{opacity:.5;}
+.campo .valor{color:var(--tinta);}
+.campo .hueco{color:#b9b5ac;}
+
+.casilla{display:inline-block; width:13px; height:13px; position:relative;
+         vertical-align:-2px; margin-right:8px;}
+
+table{width:100%; border-collapse:collapse; font-size:11.5px;}
+th{font-size:10px; letter-spacing:1.2px; text-transform:uppercase;
+   color:var(--tinta-suave); text-align:left; padding:6px 7px; white-space:nowrap;}
+td{padding:7px 7px; white-space:nowrap;}
+tr+tr td{border-top:1px dashed #cdcac2;}
+td.der, th.der{text-align:right;}
+
+.margen{width:252px; flex:none; padding-top:52px;}
+.margen .linea{display:flex; gap:9px; margin-bottom:16px; line-height:1.5;
+               font-size:11.5px; color:#7a6a52;}
+.globo{width:22px; height:22px; border:1.6px solid #7a6a52; border-radius:50%;
+       display:flex; align-items:center; justify-content:center; font-size:11px;
+       filter:url(#rugoso); flex:none;}
+.margen .titulin{font-size:10px; letter-spacing:1.2px; text-transform:uppercase;
+                 color:var(--tinta-suave); display:block; margin-bottom:2px;}
+
+.lateral{width:168px; flex:none;}
+.principal{flex:1; min-width:0; padding-left:36px;}
+
+/* El numero del margen, repetido junto al bloque que explica: sin esto el
+   lector tiene que adivinar a que parte del dibujo se refiere cada nota. */
+.conmarca{position:relative;}
+.conmarca>.marca{position:absolute; left:-32px; top:9px; width:22px; height:22px;
+                 border:1.6px solid #7a6a52; border-radius:50%; color:#7a6a52;
+                 display:flex; align-items:center; justify-content:center;
+                 font-size:11px; filter:url(#rugoso);}
+
+/* Catorce columnas no caben a tamano normal. */
+.apretada{letter-spacing:0;}
+.apretada th, .apretada td{padding:4px 3px; font-size:9px;}
+.apretada th{letter-spacing:.4px;}
+.marco{display:flex; gap:16px; align-items:flex-start;}
+</style></head>
+<body>
+
+<svg width="0" height="0" aria-hidden="true">
+  <filter id="rugoso" x="-6%" y="-6%" width="112%" height="112%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.016" numOctaves="3" seed="11" result="ruido"/>
+    <feDisplacementMap in="SourceGraphic" in2="ruido" scale="2.6"
+                       xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<div class="hoja">
+  <div class="cuerpo">
+    <div class="sello">BORRADOR v0</div>
+    <h1>Detalle del evento</h1>
+    <div class="sub">HU-12 · boceto de trabajo, no es la interfaz final</div>
+    
+<div class="marco">
+  <div class="lateral"><div class="caja"><span class="trazo fino"></span><div class="etiqueta" style="margin:0;">Usuario</div><div class="barra corta"></div><div class="nota" style="margin-bottom:12px;">rol administrador</div><span class="pastilla"><span class="trazo "></span>Salir</span><div style="height:8px;"></div><span class="pastilla"><span class="trazo "></span>Actualizar</span></div></div>
+  <div class="principal">
+    <div style="font-size:15px; letter-spacing:1px; margin-bottom:2px;">
+      QUINOR S.A.C. · CONTROL DE DESPACHO</div>
+    <div class="nota" style="margin-bottom:12px;">Alternativa 1</div>
+    <div style="margin-bottom:16px;"><span class="pastilla"><span class="trazo "></span>Eventos</span><span class="pastilla apagada"><span class="trazo fino"></span>Salud</span><span class="pastilla apagada"><span class="trazo fino"></span>Tolerancias</span><span class="pastilla apagada"><span class="trazo fino"></span>Mis tokens</span><span class="pastilla apagada"><span class="trazo fino"></span>Usuarios</span></div>
+    
+  <div class="caja" style="margin-bottom:14px;"><span class="trazo "></span><div style="font-size:14px; letter-spacing:1px;">EVENTO #0 &nbsp;·&nbsp; ORD-0000-0000</div><div class="barra media"></div><div class="nota">cliente · producto · fecha de la pesada · estado</div></div>
+
+  <div class="conmarca"><span class="marca">1</span>
+  <div class="fila">
+    <div class="col"><div class="caja"><span class="trazo "></span><div class="etiqueta">Peso esperado</div><div class="cifra">00 000,00 <small>kg</small></div></div></div>
+    <div class="col"><div class="caja"><span class="trazo "></span><div class="etiqueta">Peso real</div><div class="cifra">00 000,00 <small>kg</small></div></div></div>
+    <div class="col"><div class="caja"><span class="trazo doble"></span><div class="etiqueta">Diferencia</div><div class="cifra">-000,00 <small>kg / -0,00 %</small></div></div></div>
+  </div>
+  <div class="nota" style="margin:-6px 0 14px;">tolerancia aplicada aquel dia · cuanto se paso</div>
+  <div class="fila">
+    <div class="col"><div class="caja"><span class="trazo "></span><div class="etiqueta">Sacos en la orden</div><div class="cifra">000</div></div></div>
+    <div class="col"><div class="caja"><span class="trazo "></span><div class="etiqueta">Sacos en el video</div><div class="cifra">000</div></div></div>
+    <div class="col"><div class="caja"><span class="trazo "></span><div class="etiqueta">Diferencia</div><div class="cifra">+0</div></div></div>
+  </div></div>
+
+  <div class="conmarca"><span class="marca">2</span><div class="caja" style="margin-bottom:16px;"><span class="trazo doble"></span><div class="texto">! &nbsp;AVISO DE SUSTITUCION DE PRODUCTO</div><div class="barra larga"></div><div class="barra media"></div></div></div>
+
+  <div class="conmarca"><span class="marca">3</span>
+  <div class="etiqueta">Video del evento</div>
+  <div class="caja marco-media" style="height:200px;"><span class="trazo "></span><svg class="aspa" preserveAspectRatio="none" viewBox="0 0 100 100"><line x1="0" y1="0" x2="100" y2="100" vector-effect="non-scaling-stroke"/><line x1="100" y1="0" x2="0" y2="100" vector-effect="non-scaling-stroke"/></svg><div style="position:relative;">REPRODUCTOR DEL CLIP · ABRE EN EL SEGUNDO DE LA ANOMALIA</div></div>
+  <div class="caja" style="margin:6px 0; padding:8px 12px;"><span class="trazo fino"></span><div class="fila" style="margin:0; align-items:center; gap:10px;"><span style="font-size:13px;">&#9658;</span><span style="font-size:11px;">00:00 / 00:00</span><span style="flex:1;"><div class="barra larga"></div></span><span style="font-size:11px; letter-spacing:1px;">PAUSA · AVANCE · PANTALLA COMPLETA</span></div></div>
+  <div class="nota" style="margin-bottom:16px;">ventana recortada · camara · aviso de formato .mkv · el enlace caduca</div></div>
+
+  <div class="conmarca"><span class="marca">4</span>
+  <div class="etiqueta">Fotogramas del analisis</div>
+  <div class="fila">
+    <div class="col">
+      <div class="caja marco-media" style="height:110px;"><span class="trazo doble"></span><svg class="aspa" preserveAspectRatio="none" viewBox="0 0 100 100"><line x1="0" y1="0" x2="100" y2="100" vector-effect="non-scaling-stroke"/><line x1="100" y1="0" x2="0" y2="100" vector-effect="non-scaling-stroke"/></svg><div style="position:relative;">FOTOGRAMA 1<br>ANOMALIA</div></div>
+      <div class="nota" style="margin:6px 0;">s00 · saco saliente</div>
+      <span class="pastilla"><span class="trazo "></span>Ver el clip desde el segundo 0</span>
+    </div>
+    <div class="col">
+      <div class="caja marco-media" style="height:110px;"><span class="trazo fino"></span><svg class="aspa" preserveAspectRatio="none" viewBox="0 0 100 100"><line x1="0" y1="0" x2="100" y2="100" vector-effect="non-scaling-stroke"/><line x1="100" y1="0" x2="0" y2="100" vector-effect="non-scaling-stroke"/></svg><div style="position:relative;">FOTOGRAMA 2</div></div>
+      <div class="nota" style="margin:6px 0;">s00 · primer saco</div>
+      <span class="pastilla"><span class="trazo "></span>Ver el clip desde el segundo 0</span>
+    </div>
+    <div class="col" style="opacity:.4;">
+      <div class="caja marco-media" style="height:110px;"><span class="trazo fino"></span><div style="position:relative;">HASTA 4<br>FOTOGRAMAS</div></div>
+    </div>
+  </div></div>
+
+  <div class="conmarca"><span class="marca">5</span><div class="caja" style="margin-bottom:14px;"><span class="trazo "></span><div class="etiqueta">Analisis</div><div class="texto" style="margin-bottom:6px;">SEVERIDAD: <strong>ALTA</strong> (regla) &nbsp;|&nbsp; el modelo propuso: MEDIA</div><div class="barra larga"></div><div class="barra larga"></div><div class="barra media"></div><div class="nota" style="margin-top:8px;">descripcion del modelo · evidencia · aviso cuando las dos severidades discrepan</div></div></div>
+
+  <div class="conmarca"><span class="marca">6</span><div class="caja" style="margin-bottom:14px;"><span class="trazo "></span><div class="etiqueta">Personas en la zona de carga</div><table class=""><tr><th>Persona (id temporal)</th><th class="der">Tiempo en zona</th><th class="der">Desde el fotograma</th><th class="der">Hasta el fotograma</th></tr><tr><td>0</td><td class="der">00,0 s</td><td class="der">000</td><td class="der">0 000</td></tr><tr><td>0</td><td class="der">00,0 s</td><td class="der">000</td><td class="der">0 000</td></tr><tr><td>0</td><td class="der">00,0 s</td><td class="der">0 000</td><td class="der">0 000</td></tr></table><div class="nota" style="margin-top:8px;">identificadores temporales del rastreador · sin identificacion facial ni datos biometricos (RN-08)</div></div></div>
+
+  <div class="caja"><span class="trazo fino"></span><div class="etiqueta" style="margin:0;">Avisos enviados (HU-10)</div><div class="barra media"></div></div>
+
+  </div>
+</div>
+    <div class="pie-hoja">Boceto a lapiz. Trazo irregular, sin color, cifras y textos sustituidos por marcas. Sirve para acordar <em>que va en la pantalla y en que orden</em> sin discutir tipografias ni colores. Los numeros del dibujo se leen en el margen.</div>
+  </div>
+  <div class="margen"><div class="linea"><span class="globo">1</span><span><span class="titulin">Criterio 1</span>Los pesos y el conteo primero: la discrepancia es el hecho y existe desde que cerro el camion; el video solo la verifica.</span></div><div class="linea"><span class="globo">2</span><span><span class="titulin">Conclusion</span>Peso corto con los bultos cuadrados: la firma de la sustitucion de producto, que es el problema que motiva el sistema.</span></div><div class="linea"><span class="globo">3</span><span><span class="titulin">Criterio 2</span>Reproductor del navegador: la pausa y el avance vienen de serie. El enlace al almacen caduca a los quince minutos.</span></div><div class="linea"><span class="globo">4</span><span><span class="titulin">Criterio 3</span>El fotograma de la anomalia va primero y remarcado, y su boton lleva el video a ese segundo.</span></div><div class="linea"><span class="globo">5</span><span><span class="titulin">HU-09</span>Las dos severidades juntas: manda la regla, y se ve cuando el modelo discrepa.</span></div><div class="linea"><span class="globo">6</span><span><span class="titulin">RN-08</span>Numero temporal y tiempo en zona. Ni foto, ni nombre, ni codigo de empleado.</span></div></div>
+</div>
+</body></html>

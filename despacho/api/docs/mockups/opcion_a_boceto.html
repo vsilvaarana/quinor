@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Opcion A - Boceto a lapiz - Detalle del evento (HU-12)</title>
+<style>
+  :root{
+    --tinta:#4a4a4a;
+    --tinta-suave:#8a8a8a;
+    --papel:#fbfaf6;
+    --relleno:#e8e6e0;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:34px 30px 46px;
+    background:
+      linear-gradient(var(--papel) 0 0) padding-box,
+      repeating-linear-gradient(0deg,#e9e7df 0 1px,transparent 1px 22px),
+      repeating-linear-gradient(90deg,#e9e7df 0 1px,transparent 1px 22px);
+    background-color:var(--papel);
+    font-family:"Liberation Mono","DejaVu Sans Mono",monospace;
+    color:var(--tinta);
+  }
+  .hoja{max-width:1400px; margin:0 auto; position:relative;
+      display:flex; gap:30px; align-items:flex-start;}
+
+  /* El trazo va en una capa propia y filtrada: asi la linea tiembla como un
+     lapiz y el texto de encima se queda nitido. */
+  .caja{position:relative; padding:14px 16px;}
+  .trazo{position:absolute; inset:0; border:2px solid var(--tinta);
+         border-radius:4px; filter:url(#rugoso); pointer-events:none;}
+  .trazo.fino{border-width:1.4px; border-color:var(--tinta-suave);}
+  .trazo.doble{border-style:double; border-width:4px;}
+
+  .sello{position:absolute; top:-12px; right:0; transform:rotate(-4deg);
+         font-size:13px; letter-spacing:3px; color:#9a4a3a;
+         border:2px solid #9a4a3a; padding:5px 12px; border-radius:3px;
+         filter:url(#rugoso);}
+  .pie-hoja{margin-top:26px; font-size:12px; color:var(--tinta-suave);
+            line-height:1.6;}
+
+  h1{font-size:17px; margin:0 0 4px; letter-spacing:1px;}
+  .sub{font-size:12px; color:var(--tinta-suave); margin-bottom:18px;}
+
+  .fila{display:flex; gap:14px; margin-bottom:14px; align-items:stretch;}
+  .col{flex:1;}
+
+  .barra{height:9px; background:var(--relleno); border-radius:2px;
+         margin:5px 0;}
+  .barra.corta{width:45%;} .barra.media{width:70%;} .barra.larga{width:92%;}
+
+  .etiqueta{font-size:11px; letter-spacing:1.5px; text-transform:uppercase;
+            color:var(--tinta-suave); margin-bottom:6px;}
+  .cifra{font-size:24px; letter-spacing:-0.5px;}
+  .cifra small{font-size:12px; color:var(--tinta-suave);}
+
+  .marco-media{position:relative; height:210px; display:flex;
+               align-items:center; justify-content:center; font-size:12px;
+               letter-spacing:2px; color:var(--tinta-suave);}
+  .aspa{position:absolute; inset:0; width:100%; height:100%;
+      filter:url(#rugoso);}
+  .aspa line{stroke:var(--tinta-suave); stroke-width:1.2;}
+  .miniatura{height:116px;}
+
+  .pastilla{display:inline-block; padding:5px 12px; font-size:11px;
+            letter-spacing:1px; position:relative;}
+
+  table{width:100%; border-collapse:collapse; font-size:12px;}
+  th{font-size:10px; letter-spacing:1.5px; text-transform:uppercase;
+     color:var(--tinta-suave); text-align:left; padding:6px 8px;}
+  td{padding:7px 8px;}
+  tr+tr td{border-top:1px dashed #cdcac2;}
+
+  .nota{font-size:11px; color:var(--tinta-suave); line-height:1.5;}
+
+  /* Anotaciones del margen: el numero en circulo y su frase. */
+  .anotacion{position:absolute; right:-6px; display:flex; align-items:center;
+             gap:8px; font-size:11px; color:#7a6a52;}
+  .globo{width:22px; height:22px; border:1.6px solid #7a6a52; border-radius:50%;
+         display:flex; align-items:center; justify-content:center;
+         font-size:11px; filter:url(#rugoso); flex:none;}
+  .margen{width:250px; flex:none; padding-top:52px;}
+  .margen .linea{display:flex; gap:9px; margin-bottom:16px; line-height:1.45;}
+  .cuerpo{flex:1; min-width:0;}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" aria-hidden="true">
+  <filter id="rugoso" x="-6%" y="-6%" width="112%" height="112%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.016" numOctaves="3" seed="11" result="ruido"/>
+    <feDisplacementMap in="SourceGraphic" in2="ruido" scale="2.6"
+                       xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<div class="hoja">
+  <div class="cuerpo">
+  <div class="sello">BORRADOR v0</div>
+  <h1>QUINOR S.A.C. · Control de despacho</h1>
+  <div class="sub">Pantalla: Detalle del evento (HU-12) · boceto de trabajo, no es la interfaz final</div>
+
+    <!-- cabecera de la aplicacion -->
+    <div class="caja" style="margin-bottom:14px;"><span class="trazo fino"></span>
+      <div class="fila" style="margin:0; align-items:center;">
+        <div style="flex:2;">
+          <div class="etiqueta" style="margin:0;">Usuario</div>
+          <div class="barra corta" style="margin-top:6px;"></div>
+        </div>
+        <div style="flex:5; display:flex; gap:10px; align-items:center;">
+          <span class="pastilla"><span class="trazo fino"></span>Eventos</span>
+          <span class="pastilla" style="opacity:.55;"><span class="trazo fino"></span>Salud</span>
+          <span class="pastilla" style="opacity:.55;"><span class="trazo fino"></span>Tolerancias</span>
+          <span class="pastilla" style="opacity:.55;"><span class="trazo fino"></span>Usuarios</span>
+        </div>
+        <div style="flex:1; text-align:right;">
+          <span class="pastilla"><span class="trazo fino"></span>Salir</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- titulo del evento -->
+    <div class="caja" style="margin-bottom:14px;"><span class="trazo"></span>
+      <div style="font-size:15px; letter-spacing:1px;">EVENTO #1 &nbsp;·&nbsp; ORD-2026-0001</div>
+      <div class="barra media"></div>
+      <div class="nota" style="margin-top:4px;">cliente · producto · fecha de la pesada</div>
+    </div>
+
+    <!-- criterio 1: pesos -->
+    <div style="position:relative;">
+      <div class="fila">
+        <div class="col caja"><span class="trazo"></span>
+          <div class="etiqueta">Peso esperado</div>
+          <div class="cifra">00 000,00 <small>kg</small></div>
+        </div>
+        <div class="col caja"><span class="trazo"></span>
+          <div class="etiqueta">Peso real</div>
+          <div class="cifra">00 000,00 <small>kg</small></div>
+        </div>
+        <div class="col caja"><span class="trazo doble"></span>
+          <div class="etiqueta">Diferencia</div>
+          <div class="cifra">-000,00 <small>kg / -0,00 %</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="nota" style="margin:-6px 0 14px;">tolerancia aplicada aquel dia · cuanto se paso</div>
+
+    <!-- criterio 1: sacos -->
+    <div class="fila">
+      <div class="col caja"><span class="trazo"></span>
+        <div class="etiqueta">Sacos en la orden</div><div class="cifra">000</div>
+      </div>
+      <div class="col caja"><span class="trazo"></span>
+        <div class="etiqueta">Sacos en el video</div><div class="cifra">000</div>
+      </div>
+      <div class="col caja"><span class="trazo"></span>
+        <div class="etiqueta">Diferencia</div><div class="cifra">+0</div>
+      </div>
+    </div>
+
+    <!-- aviso de sustitucion -->
+    <div class="caja" style="margin-bottom:16px;"><span class="trazo doble"></span>
+      <div style="font-size:13px; letter-spacing:1px;">!&nbsp; AVISO DE SUSTITUCION DE PRODUCTO</div>
+      <div class="barra larga"></div>
+      <div class="barra media"></div>
+    </div>
+
+    <!-- criterio 2: el clip -->
+    <div class="etiqueta">Video del evento</div>
+    <div class="caja marco-media" style="margin-bottom:6px;"><span class="trazo"></span>
+      <svg class="aspa" preserveAspectRatio="none" viewBox="0 0 100 100">
+        <line x1="0" y1="0" x2="100" y2="100" vector-effect="non-scaling-stroke"/>
+        <line x1="100" y1="0" x2="0" y2="100" vector-effect="non-scaling-stroke"/>
+      </svg>
+      <div style="position:relative;">REPRODUCTOR DEL CLIP · ABRE EN EL SEGUNDO DE LA ANOMALIA</div>
+    </div>
+    <div class="caja" style="margin-bottom:6px; padding:8px 12px;"><span class="trazo fino"></span>
+      <div class="fila" style="margin:0; align-items:center; gap:10px;">
+        <span style="font-size:13px;">&#9658;</span>
+        <span style="font-size:11px;">00:07 / 07:00</span>
+        <span style="flex:1;"><span class="barra larga" style="margin:0;"></span></span>
+        <span style="font-size:11px; letter-spacing:1px;">PAUSA · AVANCE · PANTALLA COMPLETA</span>
+      </div>
+    </div>
+    <div class="nota" style="margin-bottom:16px;">
+      ventana recortada · camara · aviso de formato .mkv · el enlace caduca
+    </div>
+
+    <!-- criterio 3: fotogramas -->
+    <div class="etiqueta">Fotogramas del analisis</div>
+    <div class="fila">
+      <div class="col">
+        <div class="caja marco-media miniatura"><span class="trazo doble"></span>
+          <svg class="aspa" preserveAspectRatio="none" viewBox="0 0 100 100">
+            <line x1="0" y1="0" x2="100" y2="100" vector-effect="non-scaling-stroke"/>
+            <line x1="100" y1="0" x2="0" y2="100" vector-effect="non-scaling-stroke"/>
+          </svg>
+          <div style="position:relative; text-align:center;">FOTOGRAMA 1<br>ANOMALIA</div>
+        </div>
+        <div class="nota" style="margin:6px 0;">s07 · saco saliente</div>
+        <span class="pastilla"><span class="trazo"></span>Ver el clip desde el segundo 7</span>
+      </div>
+      <div class="col">
+        <div class="caja marco-media miniatura"><span class="trazo fino"></span>
+          <svg class="aspa" preserveAspectRatio="none" viewBox="0 0 100 100">
+            <line x1="0" y1="0" x2="100" y2="100" vector-effect="non-scaling-stroke"/>
+            <line x1="100" y1="0" x2="0" y2="100" vector-effect="non-scaling-stroke"/>
+          </svg>
+          <div style="position:relative; text-align:center;">FOTOGRAMA 2</div>
+        </div>
+        <div class="nota" style="margin:6px 0;">s02 · primer saco</div>
+        <span class="pastilla"><span class="trazo fino"></span>Ver el clip desde el segundo 2</span>
+      </div>
+      <div class="col" style="opacity:.4;">
+        <div class="caja marco-media miniatura"><span class="trazo fino"></span>
+          <div style="position:relative; text-align:center; font-size:11px;">
+            HASTA 4<br>FOTOGRAMAS
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- analisis -->
+    <div class="caja" style="margin-bottom:14px;"><span class="trazo"></span>
+      <div class="etiqueta">Analisis</div>
+      <div style="font-size:13px; margin-bottom:8px;">
+        SEVERIDAD: <strong>ALTA</strong> (regla) &nbsp;|&nbsp; modelo propuso: MEDIA
+      </div>
+      <div class="barra larga"></div>
+      <div class="barra larga"></div>
+      <div class="barra media"></div>
+      <div class="nota" style="margin-top:8px;">descripcion del modelo · evidencia · aviso cuando las dos severidades discrepan</div>
+    </div>
+
+    <!-- personas -->
+    <div class="caja" style="margin-bottom:14px;"><span class="trazo"></span>
+      <div class="etiqueta">Personas en la zona de carga</div>
+      <table>
+        <tr><th>Persona (id temporal)</th><th>Tiempo en zona</th><th>Desde</th><th>Hasta</th></tr>
+        <tr><td>0</td><td>00,0 s</td><td>000</td><td>0 000</td></tr>
+        <tr><td>0</td><td>00,0 s</td><td>000</td><td>0 000</td></tr>
+        <tr><td>0</td><td>00,0 s</td><td>0 000</td><td>0 000</td></tr>
+      </table>
+      <div class="nota" style="margin-top:8px;">
+        identificadores temporales del rastreador · sin identificacion facial ni
+        datos biometricos (RN-08)
+      </div>
+    </div>
+
+    <!-- avisos -->
+    <div class="caja"><span class="trazo fino"></span>
+      <div class="etiqueta" style="margin:0;">Avisos enviados (HU-10)</div>
+      <div class="barra media"></div>
+    </div>
+
+  <div class="pie-hoja">
+      Opcion A · boceto a lapiz. Trazo irregular, sin color, cifras y textos
+      sustituidos por marcas. Sirve para acordar <em>que va en la pantalla y en
+      que orden</em> sin discutir tipografias ni colores.
+    </div>
+  </div><!-- /cuerpo -->
+
+  <!-- anotaciones del margen -->
+  <div class="margen">
+    <div class="linea"><span class="globo">1</span>
+      <span>Criterio 1. Los pesos primero: la discrepancia es el hecho, el video solo la verifica.</span></div>
+    <div class="linea" style="margin-top:118px;"><span class="globo">2</span>
+      <span>Peso corto con los bultos cuadrados: la firma de la sustitucion de producto.</span></div>
+    <div class="linea" style="margin-top:96px;"><span class="globo">3</span>
+      <span>Criterio 2. Reproductor del navegador: pausa y avance vienen de serie.</span></div>
+    <div class="linea" style="margin-top:150px;"><span class="globo">4</span>
+      <span>Criterio 3. El fotograma de la anomalia va primero y su boton lleva el video a ese segundo.</span></div>
+    <div class="linea" style="margin-top:150px;"><span class="globo">5</span>
+      <span>Las dos severidades juntas: manda la regla, se ve cuando el modelo discrepa.</span></div>
+    <div class="linea" style="margin-top:110px;"><span class="globo">6</span>
+      <span>RN-08: numero temporal y tiempo en zona. Nada mas, por diseno.</span></div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>Bandeja de eventos de discrepancia · boceto QUINOR</title>
+<style>
+:root{ --tinta:#4a4a4a; --tinta-suave:#8a8a8a; --papel:#fbfaf6; --relleno:#e8e6e0; }
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:34px 30px 44px;
+  background:
+    repeating-linear-gradient(0deg,#e9e7df 0 1px,transparent 1px 22px),
+    repeating-linear-gradient(90deg,#e9e7df 0 1px,transparent 1px 22px);
+  background-color:var(--papel);
+  font-family:"Liberation Mono","DejaVu Sans Mono",monospace; color:var(--tinta);
+}
+.hoja{max-width:1400px; margin:0 auto; display:flex; gap:30px; align-items:flex-start;}
+.cuerpo{flex:1; min-width:0; position:relative;}
+
+.caja{position:relative; padding:14px 16px;}
+.trazo{position:absolute; inset:0; border:2px solid var(--tinta); border-radius:4px;
+       filter:url(#rugoso); pointer-events:none;}
+.trazo.fino{border-width:1.4px; border-color:var(--tinta-suave);}
+.trazo.doble{border-style:double; border-width:4px;}
+.trazo.punteado{border-style:dashed; border-width:1.4px; border-color:var(--tinta-suave);}
+
+.sello{position:absolute; top:-10px; right:0; transform:rotate(-4deg);
+       font-size:13px; letter-spacing:3px; color:#9a4a3a; border:2px solid #9a4a3a;
+       padding:5px 12px; border-radius:3px; filter:url(#rugoso);}
+h1{font-size:17px; margin:0 0 4px; letter-spacing:1px;}
+.sub{font-size:12px; color:var(--tinta-suave); margin-bottom:18px;}
+.pie-hoja{margin-top:24px; font-size:11.5px; color:var(--tinta-suave); line-height:1.6;}
+
+.fila{display:flex; gap:14px; margin-bottom:14px; align-items:stretch;}
+.col{flex:1; min-width:0;}
+
+.barra{height:9px; background:var(--relleno); border-radius:2px; margin:5px 0;}
+.barra.corta{width:45%;} .barra.media{width:70%;} .barra.larga{width:92%;}
+
+.etiqueta{font-size:11px; letter-spacing:1.5px; text-transform:uppercase;
+          color:var(--tinta-suave); margin-bottom:6px;}
+.cifra{font-size:23px; letter-spacing:-0.5px;}
+.cifra small{font-size:12px; color:var(--tinta-suave);}
+.nota{font-size:11px; color:var(--tinta-suave); line-height:1.55;}
+.texto{font-size:12.5px; line-height:1.6;}
+
+.marco-media{position:relative; display:flex; align-items:center;
+             justify-content:center; font-size:12px; letter-spacing:2px;
+             color:var(--tinta-suave); text-align:center;}
+.aspa{position:absolute; inset:0; width:100%; height:100%; filter:url(#rugoso);}
+.aspa line{stroke:var(--tinta-suave); stroke-width:1.2;}
+
+.pastilla{display:inline-block; padding:5px 12px; font-size:11px;
+          letter-spacing:1px; position:relative; margin-right:6px;}
+.pastilla.apagada{opacity:.5;}
+
+.campo{position:relative; padding:11px 12px; font-size:12px; min-height:40px;}
+.campo .rotulo{position:absolute; top:-8px; left:9px; background:var(--papel);
+               padding:0 6px; font-size:10px; letter-spacing:1.2px;
+               text-transform:uppercase; color:var(--tinta-suave);}
+.campo .flecha{position:absolute; right:12px; top:12px; color:var(--tinta-suave);}
+.campo.apagado{opacity:.5;}
+.campo .valor{color:var(--tinta);}
+.campo .hueco{color:#b9b5ac;}
+
+.casilla{display:inline-block; width:13px; height:13px; position:relative;
+         vertical-align:-2px; margin-right:8px;}
+
+table{width:100%; border-collapse:collapse; font-size:11.5px;}
+th{font-size:10px; letter-spacing:1.2px; text-transform:uppercase;
+   color:var(--tinta-suave); text-align:left; padding:6px 7px; white-space:nowrap;}
+td{padding:7px 7px; white-space:nowrap;}
+tr+tr td{border-top:1px dashed #cdcac2;}
+td.der, th.der{text-align:right;}
+
+.margen{width:252px; flex:none; padding-top:52px;}
+.margen .linea{display:flex; gap:9px; margin-bottom:16px; line-height:1.5;
+               font-size:11.5px; color:#7a6a52;}
+.globo{width:22px; height:22px; border:1.6px solid #7a6a52; border-radius:50%;
+       display:flex; align-items:center; justify-content:center; font-size:11px;
+       filter:url(#rugoso); flex:none;}
+.margen .titulin{font-size:10px; letter-spacing:1.2px; text-transform:uppercase;
+                 color:var(--tinta-suave); display:block; margin-bottom:2px;}
+
+.lateral{width:168px; flex:none;}
+.principal{flex:1; min-width:0; padding-left:36px;}
+
+/* El numero del margen, repetido junto al bloque que explica: sin esto el
+   lector tiene que adivinar a que parte del dibujo se refiere cada nota. */
+.conmarca{position:relative;}
+.conmarca>.marca{position:absolute; left:-32px; top:9px; width:22px; height:22px;
+                 border:1.6px solid #7a6a52; border-radius:50%; color:#7a6a52;
+                 display:flex; align-items:center; justify-content:center;
+                 font-size:11px; filter:url(#rugoso);}
+
+/* Catorce columnas no caben a tamano normal. */
+.apretada{letter-spacing:0;}
+.apretada th, .apretada td{padding:4px 3px; font-size:9px;}
+.apretada th{letter-spacing:.4px;}
+.marco{display:flex; gap:16px; align-items:flex-start;}
+</style></head>
+<body>
+
+<svg width="0" height="0" aria-hidden="true">
+  <filter id="rugoso" x="-6%" y="-6%" width="112%" height="112%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.016" numOctaves="3" seed="11" result="ruido"/>
+    <feDisplacementMap in="SourceGraphic" in2="ruido" scale="2.6"
+                       xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<div class="hoja">
+  <div class="cuerpo">
+    <div class="sello">BORRADOR v0</div>
+    <h1>Bandeja de eventos de discrepancia</h1>
+    <div class="sub">HU-11 · boceto de trabajo, no es la interfaz final</div>
+    
+<div class="marco">
+  <div class="lateral"><div class="caja"><span class="trazo fino"></span><div class="etiqueta" style="margin:0;">Usuario</div><div class="barra corta"></div><div class="nota" style="margin-bottom:12px;">rol administrador</div><span class="pastilla"><span class="trazo "></span>Salir</span><div style="height:8px;"></div><span class="pastilla"><span class="trazo "></span>Actualizar</span></div></div>
+  <div class="principal">
+    <div style="font-size:15px; letter-spacing:1px; margin-bottom:2px;">
+      QUINOR S.A.C. · CONTROL DE DESPACHO</div>
+    <div class="nota" style="margin-bottom:12px;">Alternativa 1</div>
+    <div style="margin-bottom:16px;"><span class="pastilla"><span class="trazo "></span>Eventos</span><span class="pastilla apagada"><span class="trazo fino"></span>Salud</span><span class="pastilla apagada"><span class="trazo fino"></span>Tolerancias</span><span class="pastilla apagada"><span class="trazo fino"></span>Mis tokens</span><span class="pastilla apagada"><span class="trazo fino"></span>Usuarios</span></div>
+    
+  <div class="etiqueta">Eventos de discrepancia</div>
+  <div class="nota" style="margin-bottom:14px;">
+    se crea uno cuando la diferencia entre el peso real y el esperado supera la
+    tolerancia del producto</div>
+
+  <div class="conmarca"><span class="marca">1</span>
+  <div class="fila">
+    <div class="col"><div class="campo"><span class="trazo fino"></span><span class="rotulo">Estado</span><span class="valor">por defecto</span><span class="flecha">&#9662;</span></div></div>
+    <div class="col"><div class="campo"><span class="trazo fino"></span><span class="rotulo">Severidad</span><span class="valor">todas</span><span class="flecha">&#9662;</span></div></div>
+    <div class="col"><div class="campo"><span class="trazo fino"></span><span class="rotulo">Periodo</span><span class="valor">ultimos 7 dias</span><span class="flecha">&#9662;</span></div></div>
+    <div class="col" style="flex:2;"><div class="campo"><span class="trazo fino"></span><span class="rotulo">Numero de orden</span><span class="hueco">0148, o la orden completa</span></div></div>
+  </div>
+  <div class="fila" style="align-items:center;">
+    <div class="col" style="flex:2;"><span class="casilla"><span class="trazo fino"></span></span><span style="font-size:12px;">Solo con faltante de sacos</span></div>
+    <div class="col"><div class="campo"><span class="trazo fino"></span><span class="rotulo">Filas por pagina</span><span class="valor">50</span><span class="flecha">&#9662;</span></div></div>
+    <div class="col"><div class="campo"><span class="trazo fino"></span><span class="rotulo">Pagina</span><span class="valor">1</span></div></div>
+  </div></div>
+
+  <div class="conmarca"><span class="marca">2</span><div class="nota" style="margin-bottom:12px;">Vista por defecto: solo los <strong>Pendientes</strong> de los <strong>ultimos 7 dias</strong>. Cambia Estado o Periodo para ver mas.</div></div>
+
+  <div class="caja" style="margin-bottom:10px;"><span class="trazo doble"></span><div class="texto">! &nbsp;0 evento(s) pendientes de revisar</div></div>
+  <div class="caja" style="margin-bottom:14px;"><span class="trazo fino"></span><div class="texto">! &nbsp;0 evento(s) con presencia de personal que llamo la atencion</div><div class="barra larga"></div></div>
+
+  <div class="conmarca"><span class="marca">3</span><div class="caja"><span class="trazo "></span><table class="apretada"><tr><th>ID</th><th>Fecha</th><th>Orden</th><th>Cliente</th><th class="der">Dif. kg</th><th class="der">Dif. %</th><th class="der">Sacos orden</th><th class="der">Sacos video</th><th class="der">Dif. sacos</th><th class="der">Personas</th><th>Personal</th><th>Severidad</th><th>Estado</th><th>Clip</th></tr><tr><td>0</td><td>0000-00-00 00:00</td><td>ORD-0000-0000</td><td>cliente</td><td class="der">-000,00</td><td class="der">-0,00</td><td class="der">000</td><td class="der">000</td><td class="der">+0</td><td class="der">0</td><td>revisar</td><td>alta</td><td>pendiente</td><td>si</td></tr><tr><td>0</td><td>0000-00-00 00:00</td><td>ORD-0000-0000</td><td>cliente</td><td class="der">-000,00</td><td class="der">-0,00</td><td class="der">000</td><td class="der">000</td><td class="der">-0</td><td class="der">0</td><td>normal</td><td>media</td><td>pendiente</td><td>si</td></tr><tr><td>0</td><td>0000-00-00 00:00</td><td>ORD-0000-0000</td><td>cliente</td><td class="der">+000,00</td><td class="der">+0,00</td><td class="der">-</td><td class="der">-</td><td class="der">-</td><td class="der">-</td><td>-</td><td>-</td><td>pendiente_analisis</td><td>en curso</td></tr><tr><td>0</td><td>0000-00-00 00:00</td><td>ORD-0000-0000</td><td>cliente</td><td class="der">-000,00</td><td class="der">-0,00</td><td class="der">-</td><td class="der">-</td><td class="der">-</td><td class="der">-</td><td>-</td><td>-</td><td>sin_clip</td><td>no hay video</td></tr></table></div></div>
+
+  <div class="conmarca"><span class="marca">4</span><div class="nota" style="margin-top:8px;">Mostrando 1 a 0 de 0 evento(s) · Pagina 1 de 0 · consulta resuelta en 00 ms</div></div>
+  <div style="height:8px;"></div>
+  <div class="conmarca"><span class="marca">5</span><div class="caja"><span class="trazo fino"></span><div class="etiqueta" style="margin:0;">Detalle del evento, con video y fotogramas &nbsp; &#9662;</div></div></div>
+
+  </div>
+</div>
+    <div class="pie-hoja">Boceto a lapiz. Trazo irregular, sin color, cifras y textos sustituidos por marcas. Sirve para acordar <em>que va en la pantalla y en que orden</em> sin discutir tipografias ni colores. Los numeros del dibujo se leen en el margen.</div>
+  </div>
+  <div class="margen"><div class="linea"><span class="globo">1</span><span><span class="titulin">Criterios 1 y 2</span>Los cuatro filtros se combinan entre si. Cada uno se manda solo si el supervisor lo toco, para no desactivar sin querer los valores por defecto.</span></div><div class="linea"><span class="globo">2</span><span><span class="titulin">Criterio 3</span>La vista por defecto se declara. Sin ese aviso, quien entra y ve tres eventos puede irse creyendo que son todos los que hay.</span></div><div class="linea"><span class="globo">3</span><span><span class="titulin">Criterio 1 · NULL no es cero</span>ID, fecha, orden, diferencia, severidad y estado, mas las columnas de HU-07 a HU-09. Un guion donde no hubo analisis: un cero diria que no cruzo ningun saco, que es otra cosa.</span></div><div class="linea"><span class="globo">4</span><span><span class="titulin">Criterio 2</span>El tiempo de la consulta se muestra siempre, no solo cuando pasa de 2 s: una pantalla que se degrada hay que verla antes de que sea costumbre.</span></div><div class="linea"><span class="globo">5</span><span><span class="titulin">Enlace</span>Desde aqui se abre el detalle de HU-12, para el evento que el supervisor elija.</span></div></div>
+</div>
+</body></html>
