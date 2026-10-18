@@ -237,6 +237,10 @@ class Evento(Base):
         back_populates="evento", order_by="PersonaEnEvento.primer_fotograma")
     notificaciones: Mapped[list["Notificacion"]] = relationship(
         back_populates="evento", order_by="Notificacion.creado_en")
+    # HU-13. En orden cronologico: la correccion de un veredicto solo se entiende
+    # despues de la decision que corrige.
+    veredictos: Mapped[list["Veredicto"]] = relationship(
+        back_populates="evento", order_by="Veredicto.fecha")
 
     def es_faltante(self) -> bool:
         """Falta producto. Lo contrario, un sobrepeso, tambien es una senal."""
@@ -307,6 +311,36 @@ class Notificacion(Base):
     creado_en: Mapped[dt.datetime] = mapped_column(Marca)
 
     evento: Mapped[Evento] = relationship(back_populates="notificaciones")
+
+
+class Veredicto(Base):
+    """Decision del supervisor sobre un evento. HU-13.
+
+    Una fila por decision, nunca una edicion de la anterior: la correccion de un
+    veredicto escribe uno nuevo y el historial completo queda legible. El estado
+    del evento es siempre el del ultimo veredicto, y esa duplicacion es
+    deliberada, igual que en `configuracion`: la bandeja de HU-11 filtra por
+    `evento.estado` y no puede pagar una subconsulta por fila para averiguarlo.
+
+    El comentario del criterio 1 tiene minimo en dos sitios, aqui con la
+    restriccion `ck_veredicto_comentario` y en `app/veredictos.py`. La
+    aplicacion da el mensaje util; la base garantiza que ninguna via lo salte.
+    """
+
+    __tablename__ = "veredicto"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    evento_id: Mapped[int] = mapped_column(ForeignKey("evento.id"))
+    # NOT NULL, al contrario que en auditoria: una clasificacion la firma siempre
+    # una persona. Es el criterio 2 escrito en el esquema.
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuario.id"))
+    estado_nuevo: Mapped[str] = mapped_column(
+        Enum("en_revision", "confirmado", "falso_positivo"))
+    comentario: Mapped[str] = mapped_column(String(1000))
+    fecha: Mapped[dt.datetime] = mapped_column(Marca)
+
+    evento: Mapped[Evento] = relationship(back_populates="veredictos")
+    usuario: Mapped[Usuario] = relationship()
 
 
 class SaludComponente(Base):

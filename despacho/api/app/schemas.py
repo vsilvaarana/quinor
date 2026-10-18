@@ -400,6 +400,62 @@ class ClipLeido(BaseModel):
     formato: str | None = None
 
 
+# --------------------------------------------------- HU-13 clasificacion
+Clasificacion = Literal["en_revision", "confirmado", "falso_positivo"]
+
+
+class ClasificarEvento(BaseModel):
+    """La decision del supervisor sobre un evento. HU-13.
+
+    `pendiente` no es un destino posible y por eso no esta en el Literal: el
+    criterio 3 prohibe reabrir un evento confirmado, y la forma de cumplirlo es
+    que el contrato no ofrezca la vuelta atras.
+
+    El minimo del comentario se declara aqui en uno, no en diez. No es un
+    descuido: los diez caracteres del criterio 1 se cuentan sobre el texto sin
+    espacios de los extremos, y eso lo hace `app.veredictos.normalizar_comentario`,
+    que es tambien por donde pasa cualquier otro llamador. Validarlo dos veces
+    dejaria a quien escribe "         ." con un mensaje de Pydantic sobre
+    longitudes en vez de la frase que explica para que sirve el comentario.
+    """
+
+    estado_nuevo: Clasificacion = Field(
+        description="Resultado de la revision. En revision es opcional: se puede cerrar directamente.")
+    comentario: str = Field(
+        min_length=1, max_length=1000,
+        description="Minimo 10 caracteres sin contar espacios de los extremos. Es lo que se leera cuando se revise este evento.",
+        examples=["Se verifico en almacen: faltaban 3 sacos del lote 148."])
+
+
+class VeredictoLeido(BaseModel):
+    """Una decision del historial. HU-13, criterio 2: quien y cuando.
+
+    `estado_anterior` queda en None en la primera decision porque el estado de
+    partida pudo ser Pendiente, Pendiente de analisis o Sin clip, y adivinarlo
+    seria inventarse un dato que nadie registro.
+    """
+
+    id: int
+    estado: str
+    estado_anterior: str | None = None
+    comentario: str
+    usuario_id: int
+    usuario_nombre: str | None = None
+    fecha: dt.datetime
+    es_correccion: bool = False
+
+
+class EventoClasificado(BaseModel):
+    """Lo que devuelve la clasificacion. HU-13."""
+
+    evento_id: int
+    estado_anterior: str
+    estado: str
+    cerrado: bool = False
+    fue_correccion: bool = False
+    veredicto: VeredictoLeido
+
+
 class DetalleDeEvento(BaseModel):
     """Todo lo que la pantalla de HU-12 necesita, en una sola respuesta.
 
@@ -437,6 +493,14 @@ class DetalleDeEvento(BaseModel):
     # Falta peso y los bultos cuadran: la firma de la sustitucion de producto,
     # que es el problema por el que existe este sistema.
     peso_corto_con_sacos_completos: bool = False
+
+    # HU-13. La decision vigente, el historial completo y que se puede ofrecer
+    # desde el estado actual.
+    veredicto: VeredictoLeido | None = None
+    decisiones: list[VeredictoLeido] = []
+    cerrado: bool = False
+    se_puede_clasificar: bool = True
+    clasificaciones_posibles: list[str] = []
 
 
 class NotificacionLeida(BaseModel):

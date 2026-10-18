@@ -5,8 +5,8 @@
 > que, y lo que falta. Esta escrito para que una sesion que empieza de cero
 > pueda continuar sin repetir trabajo ni contradecir lo ya construido.
 >
-> Ultima actualizacion: **08/10/2026**, al cerrar HU-12. Queda HU-13 para
-> terminar el MVP.
+> Ultima actualizacion: **18/10/2026**, al cerrar HU-13. **El MVP de 14
+> historias esta completo.**
 
 ---
 
@@ -48,14 +48,14 @@ referencias son deliberadas: permiten volver del codigo al requisito.
 
 ## 2. Estado del backlog y alcance del MVP
 
-**MVP de 14 historias, 51 pts. 13 DONE (49 pts), 1 por hacer: HU-13.**
-Todo el nucleo de captura, deteccion y analisis esta construido y probado, y la
-pantalla por la que entra el supervisor (HU-11) y el detalle donde verifica el
-clip (HU-12) tambien. Lo que falta del MVP es el veredicto del supervisor. El
-limite del MVP no es arbitrario: la
-salida del piloto (apartado 10.1) exige menos de 20 % de falsos positivos, y la
-concordancia de severidad (apartado 2.4) exige 85 %, y ambas cifras solo se
-pueden medir con el veredicto del supervisor (HU-13), que arrastra a HU-12.
+**MVP de 14 historias, 51 pts. 14 DONE (51 pts). El MVP esta completo.**
+El nucleo de captura, deteccion y analisis esta construido y probado; la pantalla
+por la que entra el supervisor (HU-11), el detalle donde verifica el clip (HU-12)
+y el veredicto con el que cierra el caso (HU-13) tambien. Con HU-13 cerrada, el
+piloto ya puede medir lo que le exige la salida del apartado 10.1 (menos de 20 %
+de falsos positivos) y la concordancia de severidad del apartado 2.4 (85 %):
+ambas cifras se calculan comparando lo que dijo el sistema con lo que decidio el
+supervisor, y esa decision ahora queda escrita.
 
 ### Renumeracion del 03/10/2026
 
@@ -71,7 +71,7 @@ antigua**: donde el codigo diga HU-15 se refiere a usuarios y tokens.
 Otros cambios del mismo dia en el Excel: HU-12 y HU-13 pasaron del Sprint 3 al
 Sprint 4 (HU-12 depende de HU-09, que es del Sprint 4), y se corrigio la columna
 "Dependencia cruzada" de HU-03 y HU-16. La copia previa quedo en
-`Backlog_Seguimiento_Alternativa1_QUINOR_pre_reaplicar_20251003.xlsx`.
+`Backlog_Seguimiento_Alternativa1_QUINOR_pre_reaplicar_20261003.xlsx`.
 
 ### Hoja Historias: el MVP
 
@@ -89,7 +89,7 @@ Sprint 4 (HU-12 depende de HU-09, que es del Sprint 4), y se corrigio la columna
 | HU-10 Alerta por correo | 4 | Alertas | 3 | **DONE** | `despacho/notificaciones` |
 | HU-11 Bandeja de eventos con filtros | 2 | Dashboard | 3 | **DONE** | `despacho/api` |
 | HU-12 Detalle del evento | 4 | Dashboard | 3 | **DONE** | `despacho/api` + dashboard |
-| HU-13 Clasificar evento | 4 | Dashboard | 2 | PENDING | pendiente |
+| HU-13 Clasificar evento | 4 | Dashboard | 2 | **DONE** | `despacho/api` + dashboard |
 | HU-14 Usuarios, roles y tokens (antes HU-15) | 1 | Seguridad | 3 | **DONE** | `despacho/api` |
 
 ### Hoja Backlog: postergadas fuera del MVP
@@ -103,16 +103,15 @@ Sprint 4 (HU-12 depende de HU-09, que es del Sprint 4), y se corrigio la columna
 | HU-19 Reentrenamiento YOLO | 5 | IA | 5 | Espera el dataset real de QUINOR |
 | HU-20 Exportar listado | 5 | Reportes | 1 | Could, la menor prioridad |
 
-**HU-13 es lo unico que queda del MVP.** Sus dos dependencias, HU-12 y HU-14,
-estan DONE. Es la historia que cierra el circulo de verdad: sin el veredicto del
-supervisor no se pueden medir ni los falsos positivos del apartado 10.1 ni la
-concordancia de severidad del apartado 2.4, que son los dos numeros con los que
-el piloto se aprueba o no.
+**El MVP esta cerrado.** Las 14 historias estan DONE. Lo que queda en el
+repositorio son las historias de la hoja Backlog, todas fuera del MVP, y el
+despliegue en el hosting, que sigue bloqueado por el apartado 11.
 
-Lo que hace falta ya esta puesto: la tabla `veredicto` existe, el trigger
-`trg_evento_no_reabrir` ya impide que un evento Confirmado retroceda (RN-06), y
-la pantalla del detalle es donde el boton tiene que vivir. Lo nuevo es el
-comentario obligatorio de 10 caracteres (RN-05) y escribir quien y cuando.
+HU-13 se entrego el 18/10/2026: `POST /eventos/{id}/veredicto` con rol Supervisor
+o Administrador, el veredicto y su historial dentro del detalle de HU-12, el
+comentario obligatorio de 10 caracteres (RN-05) contado sobre el texto recortado,
+y el usuario sacado del token y no del cuerpo de la peticion, que es lo que
+impide firmar una decision en nombre de otro.
 
 **HU-17 sigue PENDING a peticion del usuario (hoja Backlog, fuera del MVP).**
 Sustituiria el sondeo por una cola Celery. Mientras no llegue, el bucle del
@@ -137,7 +136,7 @@ sola base de datos.
    |  HU-01 pesadas    HU-02 ordenes      |   |  HU-05 buffer 72 h       |
    |  HU-03 eventos    HU-04 tolerancias  |   |  HU-06 recorte del clip  |
    |  HU-14 usuarios   HU-11 bandeja      |   |  Orquesta 07, 08, 09, 10 |
-   |  HU-12 detalle del evento y clip     |   |                          |
+   |  HU-12 detalle    HU-13 veredicto    |   |                          |
    +--------------------------------------+   +--------------------------+
                     |                              |        |         |
                     |                              v        v         v
@@ -218,7 +217,7 @@ de reintento en el bucle, para lo que fallo.
 | Modelo VLM | httpx contra Anthropic u OpenAI | HU-09, adaptador por proveedor |
 | Correo | aiosmtplib | HU-10, apartado 6.4 |
 | Almacen | MinIO (S3) | Clips y fotogramas, 12 meses. El grabador sube, la API **solo firma** enlaces (HU-12) |
-| Dashboard | Streamlit + pandas | HU-04, HU-14, bandeja (HU-11) y detalle con video (HU-12) |
+| Dashboard | Streamlit + pandas | HU-04, HU-14, bandeja (HU-11), detalle con video (HU-12) y clasificacion (HU-13) |
 | Seguridad | passlib[bcrypt], tokens opacos | HU-14 |
 | Observabilidad | structlog (JSON) | Los cinco servicios |
 | Pruebas | pytest, pytest-cov, aiosmtpd, moto | Umbral 90 %, real 100 % |
@@ -244,11 +243,12 @@ quinor/
   Backlog_Seguimiento_Alternativa1_QUINOR.xlsx
   despliegue/                       paquete para el hosting (ver seccion 9)
   despacho/
-    api/                  orquestador: HU-01, 02, 03, 04, 06(marca), 11, 12, 15
+    api/                  orquestador: HU-01, 02, 03, 04, 06(marca), 11, 12, 13, 15
       app/                main.py y un modulo por caso de uso
       app/bandeja.py      listado con filtros, dos consultas (HU-11)
-      app/detalle.py      detalle del evento, tres consultas (HU-12)
+      app/detalle.py      detalle del evento, cuatro consultas (HU-12 y HU-13)
       app/almacen.py      enlaces firmados a MinIO, solo firma (HU-12)
+      app/veredictos.py   clasificacion del evento y transiciones (HU-13)
       db/01_esquema.sql   FUENTE DE VERDAD del modelo de datos
       dashboard/app.py    interfaz Streamlit, con el reproductor de HU-12
       sim/                simuladores de bascula (Modbus) y ERP
@@ -349,7 +349,7 @@ Si una sesion nueva no lee nada mas de este archivo, que lea esto.
 | RN-02 | Sin orden valida no hay evento, hay incidencia de integracion | `api/app/eventos.py` |
 | RN-03 | El VLM se invoca solo si YOLO confirma diferencia o personal anomalo | `vlm/app/invocacion.py` |
 | RN-04 | Alta: 2+ sacos o sacos saliendo. Media: 1 saco o personal anomalo. Baja: el resto | `vlm/app/severidad.py` |
-| RN-05 | Cambiar el estado de un evento exige comentario | HU-13, pendiente |
+| RN-05 | Cambiar el estado de un evento exige comentario | `api/app/veredictos.py` y el CHECK `ck_veredicto_comentario` |
 | RN-06 | Un Confirmado no vuelve a Pendiente | trigger `trg_evento_no_reabrir` |
 | RN-07 | Video 72 h en buffer, clips 12 meses | `grabador/app/retencion.py` |
 | RN-08 | Sin identificacion facial ni biometria | `yolo/app/personas.py` y el esquema |
@@ -377,14 +377,21 @@ Estados del apartado 5.3:
             v
    [pendiente_analisis] --- reintento con exito ---> [pendiente]
             |
-            | un supervisor lo abre (HU-13)
+            | el supervisor clasifica (HU-13). El paso por
+            | [en_revision] es opcional: desde cualquier estado
+            | abierto, incluido [sin_clip], se puede cerrar ya
             v
       [en_revision]
          /        \
         v          v
-  [confirmado]  [falso_positivo]
-        |
-        +--- RN-06: de aqui no se vuelve (trigger en el motor)
+  [confirmado] <--> [falso_positivo]     correccion, con comentario
+        |                 |              y fila nueva en el historial
+        +--------+--------+
+                 |
+                 +--- RN-06: de aqui no se vuelve a un estado abierto.
+                      Lo impiden la tabla de transiciones de
+                      `api/app/veredictos.py`, el contrato de la API
+                      y el trigger `trg_evento_no_reabrir` del motor
 ```
 
 Un caso que un supervisor ya abrio o cerro **no lo toca ningun proceso
@@ -510,6 +517,18 @@ MEDIAMTX_BIN=/ruta/a/mediamtx
   siempre que el servidor atienda `Range`, cosa que MinIO hace. La pantalla lo
   advierte. Si algun dia hace falta Firefox, la salida es remuxar a MP4
   fragmentado al vuelo, sin reencodificar, y eso toca a HU-06.
+- **HU-13, Streamlit cierra los desplegables en cada redibujado.** El bloque de
+  clasificacion vive dentro del `st.expander` del detalle, y al enviar el
+  formulario la pagina se vuelve a pintar entera: el desplegable se cerraba y el
+  supervisor no llegaba a ver el resultado de su propia decision. Peor aun, la
+  vista por defecto de la bandeja son los Pendientes, asi que el evento recien
+  confirmado desaparecia de la tabla y el detalle ya no se dibujaba. Se arregla
+  con tres cosas: el envio es un callback (`on_click`), que corre **antes** de
+  que la pasada nueva pida el detalle, asi que lo que se pinta ya es el estado
+  nuevo; el callback deja una marca que reabre el desplegable, y se consume al
+  leerla para que un redibujado por otra cosa lo cierre como siempre; y el
+  evento recien clasificado se queda en el selector y la confirmacion se pinta
+  en el panel, fuera del desplegable. Verificado en Chromium con Playwright.
 
 ---
 
@@ -536,22 +555,6 @@ hosting donde vive `vallesol_yolo`, y el `wp-config.php` esta ahi.
 ---
 
 ## 12. Lo que falta, con lo que hay que saber de cada cosa
-
-**HU-13, clasificar el evento.** La siguiente, y la ultima del MVP. Aqui entra
-la RN-05 (comentario obligatorio de 10 caracteres) y se escribe en `veredicto`.
-El trigger `trg_evento_no_reabrir` ya protege el retroceso que pide su criterio
-3, asi que esa regla no hay que programarla: hay que comprobar que el error del
-motor llega a la pantalla como una frase y no como un 500.
-
-Donde va: el detalle de HU-12 es la pantalla donde el supervisor ya esta
-mirando el clip, asi que el boton vive ahi. Lo que hace falta de nuevo es el
-endpoint de escritura (`POST /eventos/{id}/veredicto`), el comentario
-obligatorio, y guardar quien y cuando, que sale del token de HU-15.
-
-Lo que HU-13 desbloquea importa mas que la historia: sin veredictos no se puede
-medir el 20 % de falsos positivos del apartado 10.1 ni la concordancia de
-severidad del 85 % del apartado 2.4, que son los dos numeros con los que el
-piloto se aprueba.
 
 **HU-17, cola de tareas.** Redis ya esta en el compose. El codigo esta preparado
 para que solo cambie quien llama.

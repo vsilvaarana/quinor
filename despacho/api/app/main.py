@@ -49,6 +49,7 @@ from app import pesadas as servicio_pesadas
 from app import salud as servicio_salud
 from app import seguridad
 from app import usuarios as servicio_usuarios
+from app import veredictos as servicio_veredictos
 from app.config import Ajustes, cargar_ajustes
 from app.db import crear_fabrica_de_sesiones, crear_motor
 from app.models import Usuario
@@ -57,16 +58,18 @@ from app.schemas import (AbrirCarga, AnalisisLeido, AvisoDelEvento,
                          CambiarActivacion,
                          CambiarClave, CambiarRol,
                          CambioDeTolerancia, CargaLeida,
-                         CapturarPesada, ClipLeido, Credenciales, CrearUsuario,
+                         CapturarPesada, ClasificarEvento, ClipLeido,
+                         Credenciales, CrearUsuario,
                          DetalleDeEvento, EditarTolerancia, EnlaceLeido,
-                         EventoLeido, FilaDeBandeja, FiltrosAplicados,
+                         EventoClasificado, EventoLeido, FilaDeBandeja,
+                         FiltrosAplicados,
                          FotogramaLeido,
                          NotificacionLeida, OrdenLeida,
                          PersonaEnZonaLeida, PersonasLeidas, PesosLeidos,
                          PesadaLeida, PesadaRegistrada, PresenciaLeida,
                          RespuestaSalud, SacosLeidos, SolicitarToken,
                          ToleranciaAplicada, ToleranciaLeida, TokenEmitido, TokenLeido,
-                         UsuarioLeido)
+                         UsuarioLeido, VeredictoLeido)
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -148,7 +151,7 @@ def create_app(
         title="QUINOR - Orquestador Alternativa 1",
         description="Deteccion de sustraccion de quinua en despacho. Sprint 1: "
                     "HU-01, HU-02, HU-04 y HU-15. Sprint 2: HU-03.",
-        version="1.2.0",
+        version="1.3.0",
         lifespan=ciclo_de_vida,
     )
     app.state.ajustes = ajustes
@@ -212,7 +215,8 @@ def create_app(
             "historias": ("HU-01 pesadas, HU-02 ordenes del ERP, "
                           "HU-03 eventos, HU-04 tolerancias, "
                           "HU-15 usuarios y tokens, HU-11 bandeja, "
-                          "HU-12 detalle del evento"),
+                          "HU-12 detalle del evento, "
+                          "HU-13 clasificacion del evento"),
             "autenticacion": "header X-API-Key con el token de POST /auth/login",
             "documentacion": "/docs",
         }
@@ -576,9 +580,14 @@ def create_app(
         del criterio 3, con cual de ellos es la anomalia y en que segundo abrir
         el reproductor para verla.
 
+        Desde HU-13 trae tambien la decision del supervisor, su historial y que
+        clasificaciones se pueden ofrecer desde el estado actual: la decision se
+        toma mirando esta pantalla, asi que lo que ya decidio alguien antes es
+        parte de lo que hace falta para decidir ahora.
+
         Una sola respuesta y no cuatro llamadas. La pantalla anterior pedia el
         evento, las personas y los avisos por separado, y cada una volvia a
-        buscar el evento para comprobar que existe. Aqui son tres consultas
+        buscar el evento para comprobar que existe. Aqui son cuatro consultas
         fijas, las mismas con una presencia que con cuarenta.
 
         Va en su propia ruta y no amplia `GET /eventos/{id}`: ese contrato lo
@@ -589,6 +598,58 @@ def create_app(
         if armado is None:
             raise HTTPException(404, detail=f"No existe el evento {evento_id}")
         return _detalle_a_esquema(armado)
+
+    @app.post("/eventos/{evento_id}/veredicto", response_model=EventoClasificado,
+              status_code=201, tags=["eventos"],
+              summary="Clasifica un evento como Confirmado o Falso positivo (HU-13)")
+    def clasificar_evento(
+        evento_id: int,
+        cuerpo: ClasificarEvento,
+        sesion: Session = Depends(obtener_sesion),
+        actor: Usuario = Depends(requiere_escritura),
+    ) -> EventoClasificado:
+        """La decision del supervisor, con su comentario, su nombre y su fecha.
+
+        El usuario sale del token y no del cuerpo: el criterio 2 pide registrar
+        quien clasifico, y un campo `usuario_id` enviado por el cliente seria
+        exactamente lo contrario, porque permitiria firmar una decision en
+        nombre de otro.
+
+        201 y no 200 porque cada clasificacion crea una fila nueva en el
+        historial, incluso cuando corrige una anterior. Un 409 significa que la
+        transicion no esta permitida, no que haya un conflicto de concurrencia:
+        el mensaje explica por que y que se puede hacer desde donde esta.
+
+        El rol Consulta no llega aqui. Clasificar es cerrar un caso, y quien
+        solo consulta no cierra casos.
+        """
+        try:
+            hecho = servicio_veredictos.clasificar(
+                sesion, evento_id, cuerpo.estado_nuevo, cuerpo.comentario, actor)
+        except servicio_veredictos.EventoNoEncontrado as exc:
+            raise HTTPException(404, detail=str(exc)) from exc
+        except (servicio_veredictos.ComentarioInsuficiente,
+                servicio_veredictos.EstadoDesconocido) as exc:
+            raise HTTPException(422, detail=str(exc)) from exc
+        except servicio_veredictos.TransicionProhibida as exc:
+            raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+        return EventoClasificado(
+            evento_id=hecho.evento_id,
+            estado_anterior=hecho.estado_anterior,
+            estado=hecho.estado,
+            cerrado=hecho.cerrado,
+            fue_correccion=hecho.fue_correccion,
+            veredicto=VeredictoLeido(
+                id=hecho.veredicto_id,
+                estado=hecho.estado,
+                estado_anterior=hecho.estado_anterior,
+                comentario=hecho.comentario,
+                usuario_id=hecho.usuario_id,
+                usuario_nombre=hecho.usuario_nombre,
+                fecha=hecho.fecha,
+                es_correccion=hecho.fue_correccion),
+        )
 
     @app.get("/eventos/{evento_id}/personas", response_model=PresenciaLeida,
              dependencies=autenticado, tags=["eventos"],
@@ -913,6 +974,20 @@ def _fotograma_a_esquema(imagen) -> FotogramaLeido:
     )
 
 
+def _veredicto_a_esquema(decision) -> VeredictoLeido:
+    """Una decision del historial de HU-13, con el nombre de quien la tomo."""
+    return VeredictoLeido(
+        id=decision.id,
+        estado=decision.estado,
+        estado_anterior=decision.estado_anterior,
+        comentario=decision.comentario,
+        usuario_id=decision.usuario_id,
+        usuario_nombre=decision.usuario_nombre,
+        fecha=decision.fecha,
+        es_correccion=decision.es_correccion,
+    )
+
+
 def _detalle_a_esquema(armado) -> DetalleDeEvento:
     """Pasa el detalle de HU-12 al contrato de salida.
 
@@ -986,6 +1061,12 @@ def _detalle_a_esquema(armado) -> DetalleDeEvento:
         segundo_de_entrada=armado.segundo_de_entrada,
         analizado=armado.analizado,
         peso_corto_con_sacos_completos=armado.peso_corto_con_sacos_completos,
+        veredicto=(_veredicto_a_esquema(armado.veredicto)
+                   if armado.veredicto else None),
+        decisiones=[_veredicto_a_esquema(d) for d in armado.decisiones],
+        cerrado=armado.cerrado,
+        se_puede_clasificar=armado.se_puede_clasificar,
+        clasificaciones_posibles=list(armado.clasificaciones_posibles),
     )
 
 

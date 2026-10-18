@@ -571,7 +571,10 @@ def test_un_fotograma_sin_url_dice_que_no_hay_imagen(sesion):
 
 # -------------------------------------------------------------- la invariante
 def test_el_detalle_no_crece_en_consultas(sesion, motor):
-    """Tres consultas, con una presencia y con cuarenta.
+    """Cuatro consultas, con una presencia y con cuarenta.
+
+    Eran tres hasta HU-13, que anadio el historial de veredictos. El numero sube
+    cuando entra una pieza nueva; lo que no puede subir es con el volumen.
 
     Es la prueba que impide que esta pantalla se degrade en silencio. Si alguien
     vuelve a leer la auditoria o las personas por fila, aqui se ve.
@@ -585,7 +588,7 @@ def test_el_detalle_no_crece_en_consultas(sesion, motor):
 
     with ContadorDeConsultas(motor) as contador:
         armar(sesion, uno, firmador())
-    assert len(contador) == 3, contador.sentencias
+    assert len(contador) == 4, contador.sentencias
 
     muchos = sembrar(sesion, clip_url=CLIP, personas_detectadas=40,
                      severidad="alta", descripcion_ia=ANALISIS,
@@ -600,7 +603,7 @@ def test_el_detalle_no_crece_en_consultas(sesion, motor):
 
     with ContadorDeConsultas(motor) as contador:
         detalle = armar(sesion, muchos, firmador())
-    assert len(contador) == 3, contador.sentencias
+    assert len(contador) == 4, contador.sentencias
     assert len(detalle.personas.presencias) == 40
     assert len(detalle.fotogramas) == 4
 

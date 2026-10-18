@@ -29,8 +29,8 @@ Referencia funcional: `Documento_Funcional_Tecnico_Alternativa1_QUINOR.docx` v1.
 > cambio de comportamiento. La tabla de equivalencias esta en
 > `CONTEXTO_DEL_PROYECTO.md`, apartado 2.
 
-Total computable: 11 puntos de los 14 planificados, los 11 entregados. Los 3
-restantes son HU-17, excluida por depender de HU-03, del Sprint 2.
+Total computable: 11 puntos de los 11 del Sprint 1, los 11 entregados. HU-17
+salio del MVP el 03/10/2026, asi que no suma ni resta aqui.
 
 Adelantado del Sprint 2:
 
@@ -41,6 +41,7 @@ Adelantado del Sprint 2:
 | HU-06 | Recorte del clip de la ventana de la carga | **DONE** | marca de carga aqui, recorte en el grabador |
 | HU-11 | Bandeja de eventos con filtros combinados | **DONE** | esta API y el dashboard |
 | HU-12 | Detalle del evento, con clip y fotogramas (Sprint 4) | **DONE** | esta API y el dashboard |
+| HU-13 | Clasificacion del evento por el supervisor (Sprint 4) | **DONE** | esta API y el dashboard |
 
 HU-03 estaba bloqueada por HU-01, HU-02 y HU-04, las tres del Sprint 1. Al
 cerrarse el sprint quedo desbloqueada y se entrego. Con ella el circulo se
@@ -442,13 +443,14 @@ el conteo, el clip reproduciendose y el fotograma de la anomalia.
 | 2. El clip se reproduce con pausa y avance | Enlace firmado a MinIO y `st.video` en el dashboard | `test_el_clip_llega_firmado_y_listo_para_el_reproductor`, verificado ademas en un navegador real |
 | 3. Se muestra el fotograma de la anomalia | `fotogramas_clave` firmados y ordenados por prioridad | `test_la_anomalia_es_el_saco_que_sale_y_no_el_primero_de_la_carga` |
 
-`GET /eventos/{id}/detalle`. Tres consultas fijas, las mismas con una presencia
+`GET /eventos/{id}/detalle`. Cuatro consultas fijas, las mismas con una presencia
 que con cuarenta, y `test_el_detalle_no_crece_en_consultas` las cuenta:
 
 1. el evento con su pesada y su orden, de un JOIN;
 2. las presencias de HU-08;
 3. la auditoria, de donde salen la tolerancia de aquel dia y la ventana que el
-   grabador recorto de verdad.
+   grabador recorto de verdad;
+4. los veredictos de HU-13 con el nombre de quien decidio, de otro JOIN.
 
 ### La API firma el video, no lo sirve
 
@@ -517,6 +519,93 @@ RN-08 y el apartado 8 prohiben la identificacion facial y los datos biometricos.
 Esta es la pantalla donde esa tentacion seria mas grande, asi que
 `test_el_detalle_no_lleva_nada_que_identifique_a_nadie` revisa el payload campo
 por campo.
+
+## HU-13: la clasificacion del evento (DONE)
+
+Donde el supervisor cierra el caso: Confirmado o Falso positivo, con un
+comentario que explica en que se baso. Es lo que alimenta la mejora continua del
+apartado 2, porque sin decisiones escritas no hay forma de separar lo que el
+sistema acerto de lo que no.
+
+| Criterio | Como se cumple | Donde se prueba |
+|---|---|---|
+| 1. El cambio de estado exige comentario de 10 caracteres o mas | `veredictos.normalizar_comentario`, contando sobre el texto recortado, y el CHECK `ck_veredicto_comentario` | `test_un_comentario_de_solo_espacios_no_clasifica` |
+| 2. Se registra usuario y fecha | `veredicto.usuario_id` NOT NULL y `fecha`, con el usuario sacado del token | `test_se_registra_quien_clasifico_y_cuando`, `test_el_endpoint_no_acepta_un_usuario_enviado_por_el_cliente` |
+| 3. Un evento Confirmado no puede volver a Pendiente | tabla de transiciones, el contrato de la API y el trigger `trg_evento_no_reabrir` | `test_un_evento_cerrado_no_vuelve_a_revision`, `test_el_motor_rechaza_el_reabrir_aunque_la_aplicacion_lo_permitiera` |
+
+`POST /eventos/{id}/veredicto`, con rol Supervisor o Administrador. La lectura
+no tiene ruta propia: el veredicto vigente, el historial y las clasificaciones
+posibles viajan dentro del detalle de HU-12, que es la pantalla donde se decide.
+
+### Una tabla, no una columna
+
+`evento.estado` responde "en que quedo esto". El veredicto responde "por que", y
+esa es la pregunta que llega meses despues, cuando el cliente reclama y hay que
+explicar quien decidio que aquello era un falso positivo. Una columna sola
+guarda la ultima decision y pierde las anteriores, que es justo la que se busca
+cuando un evento aparece cerrado y el faltante existia. Por eso una correccion
+no edita nada: escribe una fila nueva en `veredicto` y el estado del evento pasa
+a ser el de la ultima.
+
+El estado sigue duplicado en `evento.estado` a proposito, como en
+`configuracion`: la bandeja de HU-11 filtra por esa columna y no puede pagar una
+subconsulta por fila para averiguar el ultimo veredicto.
+
+### Que transiciones se permiten
+
+```
+pendiente, pendiente_analisis, sin_clip  ->  en_revision | confirmado | falso_positivo
+en_revision                              ->  confirmado | falso_positivo
+confirmado                               ->  falso_positivo
+falso_positivo                           ->  confirmado
+```
+
+El paso por `en_revision` es opcional: quien ya esta mirando el clip en la
+pantalla de HU-12 puede cerrar el evento directamente, y obligarle a marcar "en
+revision" primero solo conseguiria que ese estado no signifique nada.
+
+Las dos ultimas son la correccion de una decision equivocada, que ocurre: el
+clip se vuelve a mirar con mas calma y la conclusion cambia. Lo que no se puede
+es reabrir. La RN-06 lo exige para Confirmado y aqui se extiende a Falso
+positivo por el mismo motivo: un evento reabierto desaparece de los cerrados y
+vuelve a la bandeja como si nadie lo hubiera mirado, perdiendo la decision y el
+nombre de quien la tomo.
+
+Un evento en `sin_clip` o sin analizar se clasifica igual que los demas, y es el
+caso que mas importa cerrar: hay una discrepancia de peso real y ningun video
+que mirar, asi que el supervisor cuenta en almacen y decide. Si la pantalla se lo
+impidiera, los eventos sin video se quedarian abiertos para siempre y la bandeja
+dejaria de servir para saber que falta por revisar.
+
+### El criterio 3, tres veces
+
+La tabla de transiciones no nombra `pendiente` como destino; el contrato de la
+API solo acepta los tres veredictos, asi que un `estado_nuevo: "pendiente"` se
+rechaza con 422 antes de llegar al servicio; y el trigger `trg_evento_no_reabrir`
+lo impide en el motor aunque la escritura entre por fuera de la aplicacion. La
+prueba del trigger sabotea a proposito las listas del servicio para llegar a la
+base con un cambio que hoy no pasa: si alguien relaja la regla de la aplicacion,
+la pantalla sigue recibiendo un 409 con la frase de la RN-06 y no un 500 con SQL
+dentro.
+
+### En la pantalla
+
+El bloque va al final del detalle, despues de las cifras, el clip y los
+fotogramas, porque es la conclusion y no el punto de partida. Las opciones que
+se ofrecen salen de `clasificaciones_posibles`, que calcula la API: repetir la
+tabla de transiciones en el dashboard acabaria ofreciendo un boton que la API
+rechaza, y quien lo pulsa no tiene forma de saber cual de las dos pantallas esta
+equivocada.
+
+Clasificar un evento suele sacarlo del filtro de la bandeja, que por defecto
+muestra solo los Pendientes. Por eso la confirmacion se pinta en el panel y no
+dentro del desplegable, y el evento recien clasificado se queda en el selector
+del detalle aunque ya no aparezca en la tabla: es donde esta su historial y
+desde donde se corrige una decision equivocada.
+
+Verificado ademas en un navegador real: comentario corto rechazado, evento
+confirmado con su usuario y su fecha, la opcion de volver a revision ya no se
+ofrece, y la correccion a Falso positivo deja las dos decisiones en el historial.
 
 ## HU-06: la marca de inicio de carga (DONE)
 
@@ -829,6 +918,7 @@ quinor/
       bandeja.py      listado con filtros y paginacion (HU-11)
       detalle.py      detalle del evento con clip y fotogramas (HU-12)
       almacen.py      enlaces firmados a MinIO, solo firma (HU-12)
+      veredictos.py   clasificacion del evento y sus transiciones (HU-13)
       cargas.py       marca de inicio de carga (HU-06)
       seguridad.py    hash de contrasenas y tokens opacos (HU-15)
       usuarios.py     caso de uso de usuarios, roles y tokens (HU-15)

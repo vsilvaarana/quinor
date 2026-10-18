@@ -21,6 +21,31 @@ import streamlit as st
 API_URL = os.getenv("API_INTERNAL_URL", "http://api:8000")
 TIEMPO_LIMITE = 15
 
+# Como se escriben los estados del evento en pantalla. Sin esto la interfaz
+# muestra `falso_positivo` y el supervisor lee codigo. Solo traduce: que
+# transiciones se permiten lo decide la API y llega en el detalle.
+NOMBRE_DEL_ESTADO = {
+    "pendiente": "Pendiente",
+    "pendiente_analisis": "Pendiente de analisis",
+    "en_revision": "En revision",
+    "confirmado": "Confirmado",
+    "falso_positivo": "Falso positivo",
+    "sin_clip": "Sin clip",
+}
+# Los roles que escriben. El rol Consulta ve la decision pero no la toma: la API
+# lo rechaza con 403 y la pantalla no ofrece el formulario, para no invitar a un
+# error que ya esta cerrado.
+ROLES_QUE_CLASIFICAN = ("administrador", "supervisor")
+# Donde el callback de clasificar deja lo que paso, para que lo pinte la pasada
+# siguiente: dentro de un callback no se puede dibujar.
+RESULTADO_CLASIFICACION = "resultado_clasificacion"
+# Marca para reabrir el detalle en el redibujado que sigue a una accion de
+# dentro: Streamlit cierra los desplegables en cada pasada.
+DETALLE_ABIERTO = "detalle_abierto"
+# El ultimo evento clasificado, para poder seguir abriendo su detalle cuando la
+# clasificacion lo saca del filtro de la bandeja.
+ULTIMO_CLASIFICADO = "ultimo_evento_clasificado"
+
 st.set_page_config(page_title="QUINOR - Control de despacho", page_icon="📦", layout="wide")
 
 
@@ -37,6 +62,11 @@ def detalle_del_error(respuesta: httpx.Response) -> str:
         return str(respuesta.json().get("detail", respuesta.text))
     except ValueError:
         return respuesta.text
+
+
+def puede_escribir() -> bool:
+    """Si el usuario de la sesion puede clasificar. HU-13 con HU-15."""
+    return st.session_state.get("usuario", {}).get("rol") in ROLES_QUE_CLASIFICAN
 
 
 def cerrar_sesion() -> None:
@@ -170,10 +200,14 @@ def panel_de_eventos() -> None:
     eventos = bandeja["filas"]
 
     _aviso_de_filtros_por_defecto(bandeja)
+    _resultado_de_la_clasificacion()
 
     if not eventos:
         st.success("No hay eventos de discrepancia con ese filtro.")
         _pie_de_la_bandeja(bandeja)
+        # Aun sin filas puede quedar el evento recien clasificado, que casi
+        # siempre acaba de salirse del filtro por haberlo clasificado.
+        _detalle_del_evento(eventos)
         return
 
     _senales_de_la_bandeja(bandeja)
@@ -214,6 +248,39 @@ def panel_de_eventos() -> None:
 
     _pie_de_la_bandeja(bandeja)
     _detalle_del_evento(eventos)
+
+
+def _resultado_de_la_clasificacion() -> None:
+    """Pinta lo que dejo el callback de HU-13, si dejo algo.
+
+    Va en el panel y no dentro del detalle porque un evento recien clasificado
+    suele caerse del filtro: la vista por defecto son los Pendientes, y en
+    cuanto se confirma uno su fila desaparece. Si el mensaje viviera dentro del
+    desplegable, el supervisor no veria la confirmacion de lo que acaba de
+    decidir, que es justo cuando hace falta.
+    """
+    nivel, mensaje = st.session_state.pop(RESULTADO_CLASIFICACION, (None, None))
+    if nivel == "ok":
+        st.success(mensaje)
+    elif nivel == "aviso":
+        st.warning(mensaje)
+    elif nivel == "error":
+        st.error(mensaje)
+
+
+def _eventos_abribles(eventos: list[dict]) -> list[int]:
+    """Los eventos de la bandeja, mas el ultimo que se clasifico.
+
+    El recien clasificado se conserva aunque ya no cuadre con el filtro: es
+    donde esta su historial y desde donde se corrige una decision equivocada, y
+    obligar a cambiar el filtro para releer lo que se acaba de escribir es la
+    forma mas rapida de que nadie compruebe nada.
+    """
+    ids = [e["id"] for e in eventos]
+    reciente = st.session_state.get(ULTIMO_CLASIFICADO)
+    if reciente and reciente not in ids:
+        return [reciente, *ids]
+    return ids
 
 
 def _filtros_de_la_bandeja() -> dict:
@@ -381,10 +448,23 @@ def _detalle_del_evento(eventos: list[dict]) -> None:
     toda la tabla. Aqui se pagan una vez, para el evento que el supervisor
     eligio.
     """
-    with st.expander("Detalle del evento, con video y fotogramas"):
-        elegido = st.selectbox(
-            "Evento", [e["id"] for e in eventos],
-            format_func=lambda i: f"#{i}")
+    # Streamlit cierra el desplegable en cada redibujado, asi que el salto a un
+    # segundo de HU-12 y la clasificacion de HU-13 dejan una marca para que esta
+    # pasada lo vuelva a abrir: quien acaba de pulsar algo aqui dentro tiene que
+    # seguir viendo lo que estaba mirando. La marca se consume al leerla, de modo
+    # que un redibujado posterior por otra cosa (cambiar un filtro de la bandeja)
+    # lo cierra como siempre.
+    abribles = _eventos_abribles(eventos)
+    if not abribles:
+        return
+
+    with st.expander("Detalle del evento, con video y fotogramas",
+                     expanded=st.session_state.pop(DETALLE_ABIERTO, False)):
+        elegido = st.selectbox("Evento", abribles,
+                               format_func=lambda i: f"#{i}")
+        if elegido not in [e["id"] for e in eventos]:
+            st.caption("Este evento ya no cumple el filtro de la bandeja: se "
+                       "sigue mostrando porque acabas de clasificarlo.")
 
         respuesta = pedir("GET", f"/eventos/{elegido}/detalle")
         if respuesta.status_code != 200:
@@ -399,6 +479,7 @@ def _detalle_del_evento(eventos: list[dict]) -> None:
         _personas_del_detalle(detalle)
         _avisos_del_evento({"id": detalle["id"],
                             "severidad": detalle["analisis"]["severidad"]})
+        _clasificacion_del_evento(detalle)
 
 
 def _cifras_del_detalle(detalle: dict) -> None:
@@ -519,6 +600,7 @@ def _ir_al_segundo(evento_id: int, segundo: float) -> None:
     interaccion mas tarde.
     """
     st.session_state[_clave_del_segundo(evento_id)] = segundo
+    st.session_state[DETALLE_ABIERTO] = True
 
 
 MOTIVOS = {
@@ -687,6 +769,115 @@ def _avisos_del_evento(evento: dict) -> None:
             st.error(f"El aviso no salio ({aviso['intentos']} intento(s)): "
                      f"{aviso['error'] or 'sin detalle'}. Nadie ha recibido "
                      f"este evento por correo.")
+
+
+def _clasificacion_del_evento(detalle: dict) -> None:
+    """La decision del supervisor sobre el evento. HU-13.
+
+      1. El cambio de estado exige un comentario de al menos 10 caracteres.
+      2. Se registra el usuario y la fecha del cambio.
+      3. Un evento Confirmado no puede volver al estado Pendiente.
+
+    Va al final de la pantalla y no al principio porque es la conclusion: se
+    clasifica despues de ver las cifras, el clip y los fotogramas, no antes.
+
+    Las opciones que se ofrecen salen de `clasificaciones_posibles`, que calcula
+    la API. Repetir aqui la tabla de transiciones acabaria ofreciendo un boton
+    que la API rechaza, y quien lo pulsa no tiene forma de saber cual de las dos
+    pantallas esta equivocada.
+    """
+    st.divider()
+    st.markdown("**Clasificacion del evento**")
+
+    vigente = detalle["veredicto"]
+    if vigente:
+        quien = vigente["usuario_nombre"] or f"id {vigente['usuario_id']}"
+        cuando = vigente["fecha"][:19].replace("T", " ")
+        marca = " (correccion)" if vigente["es_correccion"] else ""
+        st.success(f"**{NOMBRE_DEL_ESTADO.get(vigente['estado'], vigente['estado'])}**"
+                   f"{marca}, por {quien} el {cuando}")
+        st.caption(f"\"{vigente['comentario']}\"")
+    else:
+        st.info("Este evento todavia no se ha clasificado.")
+
+    if len(detalle["decisiones"]) > 1:
+        st.caption("Historial de decisiones")
+        st.dataframe(
+            pd.DataFrame([{
+                "Fecha": d["fecha"][:19].replace("T", " "),
+                "Decision": NOMBRE_DEL_ESTADO.get(d["estado"], d["estado"]),
+                "Venia de": NOMBRE_DEL_ESTADO.get(d["estado_anterior"], "sin registrar"),
+                "Usuario": d["usuario_nombre"] or f"id {d['usuario_id']}",
+                "Comentario": d["comentario"],
+            } for d in detalle["decisiones"]]),
+            use_container_width=True, hide_index=True)
+
+    posibles = detalle["clasificaciones_posibles"]
+    if not puede_escribir():
+        st.caption("El rol Consulta no clasifica eventos.")
+        return
+    if not posibles:
+        st.caption("Este evento no admite mas cambios de estado.")
+        return
+
+    # Las claves llevan el id del evento: dos eventos abiertos uno tras otro no
+    # comparten ni la opcion marcada ni el comentario a medio escribir.
+    clave_estado = f"estado_del_veredicto_{detalle['id']}"
+    clave_comentario = f"comentario_del_veredicto_{detalle['id']}"
+    with st.form(f"clasificar_{detalle['id']}"):
+        st.radio(
+            "Resultado de la revision", posibles, horizontal=True,
+            key=clave_estado,
+            format_func=lambda e: NOMBRE_DEL_ESTADO.get(e, e))
+        st.text_area(
+            "Comentario", max_chars=1000, height=90, key=clave_comentario,
+            placeholder="En que se basa la decision. Minimo 10 caracteres.",
+            help="Es lo que se leera cuando se revise este evento dentro de "
+                 "unos meses, asi que conviene decir que se comprobo y donde.")
+        # El envio es un callback y no el valor que devuelve el boton, por lo
+        # mismo que el salto de HU-12: Streamlit ejecuta los callbacks antes de
+        # volver a dibujar, asi que la peticion sale antes de que esta pantalla
+        # pida el detalle y lo que se ve debajo ya es el estado nuevo.
+        # Comprobandolo despues, la decision se veria una interaccion mas tarde.
+        st.form_submit_button(
+            "Guardar clasificacion", type="primary",
+            on_click=_guardar_clasificacion,
+            args=(detalle["id"], clave_estado, clave_comentario))
+
+
+def _guardar_clasificacion(evento_id: int, clave_estado: str,
+                           clave_comentario: str) -> None:
+    """Envia la decision y deja el resultado para que lo pinte la pasada nueva."""
+    estado = st.session_state.get(clave_estado)
+    comentario = st.session_state.get(clave_comentario) or ""
+    # Pase lo que pase, el detalle se vuelve a abrir: el resultado de esto se
+    # lee ahi dentro.
+    st.session_state[DETALLE_ABIERTO] = True
+
+    # El minimo se comprueba antes de salir a la red: el aviso llega al instante
+    # y la API lo vuelve a comprobar igual, que es donde manda.
+    if len(comentario.strip()) < 10:
+        st.session_state[RESULTADO_CLASIFICACION] = (
+            "aviso", "El comentario necesita al menos 10 caracteres. "
+                     "Explique en que se basa la decision.")
+        return
+
+    resultado = pedir("POST", f"/eventos/{evento_id}/veredicto",
+                      json={"estado_nuevo": estado, "comentario": comentario})
+    if resultado.status_code == 201:
+        hecho = resultado.json()
+        nombre = NOMBRE_DEL_ESTADO.get(hecho["estado"], hecho["estado"])
+        st.session_state[RESULTADO_CLASIFICACION] = (
+            "ok", f"Evento #{hecho['evento_id']} clasificado como {nombre}.")
+        # El evento sigue en el selector aunque la clasificacion lo haya sacado
+        # del filtro de la bandeja.
+        st.session_state[ULTIMO_CLASIFICADO] = hecho["evento_id"]
+        # El comentario ya esta guardado: dejarlo en el cuadro invitaria a
+        # enviarlo otra vez como si fuera una decision nueva.
+        st.session_state[clave_comentario] = ""
+    else:
+        st.session_state[RESULTADO_CLASIFICACION] = (
+            "error", detalle_del_error(resultado))
 
 
 # -------------------------------------------------------------- tolerancias

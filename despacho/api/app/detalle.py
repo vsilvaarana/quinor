@@ -20,13 +20,19 @@ una sola vez y responde a la pregunta por la que abrio la pantalla.
 
 Lo que no cambia es la regla de la casa: nada se lee por fila. Las presencias de
 HU-08 pueden ser decenas y los fotogramas de HU-09 hasta cuatro, y ninguno de los
-dos se recorre pidiendo datos de uno en uno. Son **tres consultas fijas**, y hay
-una prueba que las cuenta:
+dos se recorre pidiendo datos de uno en uno. Son **cuatro consultas fijas**, y
+hay una prueba que las cuenta:
 
   1. el evento con su pesada y su orden, de un JOIN;
   2. las presencias del evento;
   3. la auditoria, de donde salen la tolerancia con la que se juzgo aquella carga
-     y la ventana que el grabador recorto de verdad.
+     y la ventana que el grabador recorto de verdad;
+  4. los veredictos de HU-13 con el nombre de quien decidio, de otro JOIN.
+
+La cuarta entro con HU-13 y no abrio una ruta aparte a proposito: la decision se
+toma mirando esta misma pantalla, y lo que ya decidio alguien antes es parte de
+lo que hace falta para decidir ahora. Una llamada mas obligaria a la interfaz a
+pedir dos cosas para pintar una.
 
 La tolerancia sale de la auditoria y no de `configuracion` a proposito: si
 manana alguien la cambia, el evento tiene que seguir diciendo contra que umbral
@@ -62,8 +68,10 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import veredictos as servicio_veredictos
 from app.almacen import ALMACEN_NO_CONFIGURADO, SIN_OBJETO, Enlace, Firmador
-from app.models import Auditoria, Evento, OrdenDespacho, Pesada, PersonaEnEvento
+from app.models import (Auditoria, Evento, OrdenDespacho, Pesada,
+                        PersonaEnEvento, Usuario, Veredicto)
 
 # Acciones de auditoria que el detalle necesita leer. Una sola consulta con un
 # IN, no tres: son la misma tabla y el mismo evento.
@@ -271,6 +279,30 @@ class Clip:
 
 
 @dataclasses.dataclass(frozen=True)
+class Decision:
+    """Un veredicto del historial. HU-13.
+
+    `estado_anterior` sale de encadenar la lista y no de una columna: cada
+    decision viene del estado que dejo la anterior. En la primera queda en None
+    porque el estado de partida pudo ser Pendiente, Pendiente de analisis o Sin
+    clip, y adivinarlo seria inventarse un dato que nadie registro.
+    """
+
+    id: int
+    estado: str
+    comentario: str
+    usuario_id: int
+    usuario_nombre: str | None
+    fecha: dt.datetime
+    estado_anterior: str | None = None
+
+    @property
+    def es_correccion(self) -> bool:
+        """Cambio una decision ya tomada en vez de cerrar un evento abierto."""
+        return servicio_veredictos.es_final(self.estado_anterior)
+
+
+@dataclasses.dataclass(frozen=True)
 class Detalle:
     """Todo lo que la pantalla del criterio 1 necesita, en un solo objeto."""
 
@@ -290,6 +322,35 @@ class Detalle:
     analisis: Analisis
     clip: Clip
     fotogramas: tuple[Fotograma, ...] = ()
+    # HU-13. Van dentro del detalle y no en una ruta aparte porque la decision se
+    # toma mirando esta misma pantalla: el supervisor acaba de ver el clip y las
+    # cifras, y lo que ya decidio alguien antes es parte de lo que necesita saber
+    # para decidir ahora.
+    decisiones: tuple[Decision, ...] = ()
+
+    @property
+    def veredicto(self) -> Decision | None:
+        """La decision vigente, que es la ultima. None si nadie clasifico aun."""
+        return self.decisiones[-1] if self.decisiones else None
+
+    @property
+    def cerrado(self) -> bool:
+        """El evento ya tiene una decision final: Confirmado o Falso positivo."""
+        return servicio_veredictos.es_final(self.estado)
+
+    @property
+    def se_puede_clasificar(self) -> bool:
+        return servicio_veredictos.se_puede_clasificar(self.estado)
+
+    @property
+    def clasificaciones_posibles(self) -> tuple[str, ...]:
+        """Lo que la pantalla puede ofrecer desde el estado actual.
+
+        Viaja resuelto para que la interfaz no repita la tabla de transiciones:
+        dos copias de la misma regla acaban discrepando, y la que discrepa aqui
+        ofrece un boton que la API rechaza.
+        """
+        return servicio_veredictos.destinos_desde(self.estado)
 
     @property
     def analizado(self) -> bool:
@@ -417,12 +478,38 @@ def _clip_de(clip_url: str | None, recorte: dict, sin_clip: dict,
     )
 
 
+def _decisiones_de(sesion: Session, evento_id: int) -> tuple[Decision, ...]:
+    """El historial de veredictos de HU-13, con el nombre de quien decidio.
+
+    Un JOIN y no una consulta por fila: el nombre del supervisor se lee aqui
+    porque un numero de usuario en la pantalla no le dice nada a nadie, y porque
+    `veredicto.usuario_id` es NOT NULL, asi que el JOIN no pierde filas.
+    """
+    filas = sesion.execute(
+        select(Veredicto.id, Veredicto.estado_nuevo, Veredicto.comentario,
+               Veredicto.usuario_id, Veredicto.fecha, Usuario.nombre)
+        .join(Usuario, Veredicto.usuario_id == Usuario.id)
+        .where(Veredicto.evento_id == evento_id)
+        .order_by(Veredicto.fecha, Veredicto.id)).all()
+
+    decisiones: list[Decision] = []
+    anterior: str | None = None
+    for fila in filas:
+        decisiones.append(Decision(
+            id=fila.id, estado=fila.estado_nuevo, comentario=fila.comentario,
+            usuario_id=fila.usuario_id, usuario_nombre=fila.nombre,
+            fecha=fila.fecha, estado_anterior=anterior))
+        anterior = fila.estado_nuevo
+    return tuple(decisiones)
+
+
 def armar(sesion: Session, evento_id: int,
           firmador: Firmador | None = None) -> Detalle | None:
     """El detalle completo de un evento, o None si no existe.
 
-    Tres consultas fijas, sea cuantas sean las presencias y los fotogramas. Es
-    la invariante que `test_el_detalle_no_crece_en_consultas` protege.
+    Cuatro consultas fijas, sean cuantas sean las presencias, los fotogramas y
+    las decisiones. Es la invariante que `test_el_detalle_no_crece_en_consultas`
+    protege.
     """
     fila = sesion.execute(
         select(
@@ -504,4 +591,5 @@ def armar(sesion: Session, evento_id: int,
                       anotaciones.get(ACCION_SIN_CLIP, {}),
                       firmador),
         fotogramas=_fotogramas_de(fila.fotogramas_clave, firmador),
+        decisiones=_decisiones_de(sesion, evento_id),
     )
