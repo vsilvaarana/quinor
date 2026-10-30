@@ -89,7 +89,7 @@ def motor(esquema):
 
 
 # Las contrasenas de estas filas no existen: la columna pide un hash y se le da
-# una cadena con la forma de uno. Aqui no se prueba el login, que es HU-14.
+# una cadena con la forma de uno. Aqui no se prueba el login, que es HU-15.
 HASH = "$2b$12$" + "x" * 53
 
 

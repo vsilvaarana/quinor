@@ -47,3 +47,8 @@ pandas==2.2.3                      # st.dataframe lo requiere. Tambien HU-11, HU
 
 # --- Observabilidad ----------------------------------------------------------
 structlog==24.4.0
+
+# --- HU-12 enlaces al almacen ------------------------------------------------
+# Solo para firmar: el clip y los fotogramas los sube el grabador. Firmar es una
+# cuenta local con HMAC, asi que esta dependencia no abre ninguna conexion.
+minio==7.2.20

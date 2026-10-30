@@ -17,6 +17,10 @@ pydantic==2.10.4
 
 # --- Vision ------------------------------------------------------------------
 ultralytics==8.3.155               # YOLO11 y ByteTrack (apartado 6.4).
+lap==0.5.13                        # ByteTrack lo necesita para asociar los sacos
+                                   # entre fotogramas. Sin el, ultralytics intenta
+                                   # instalarlo al vuelo y falla sin internet o en la
+                                   # imagen de produccion (usuario sin permisos).
 # Rueda de CPU. En planta, con la GPU del RNF-06, se instala la de CUDA:
 #   pip install torch==2.5.1 torchvision==0.20.1 \
 #       --index-url https://download.pytorch.org/whl/cu124

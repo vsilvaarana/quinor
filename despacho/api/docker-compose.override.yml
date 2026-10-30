@@ -1,0 +1,35 @@
+# =============================================================================
+# QUINOR - Ajuste local: base en AWS Lightsail y clips en Amazon S3
+#
+# Docker Compose lee este archivo solo, junto con docker-compose.yml, cada vez
+# que corres "docker compose ...". No hace falta nombrarlo en el comando.
+# =============================================================================
+services:
+  # Certificado de AWS para la base (ssl_ca=/certs/global-bundle.pem en
+  # DATABASE_URL). Solo lo necesitan los servicios que hablan con la base.
+  api:
+    volumes:
+      - ./certs:/certs:ro
+  notificaciones:
+    volumes:
+      - ./certs:/certs:ro
+  grabador:
+    volumes:
+      - ./certs:/certs:ro
+    # Los clips van a S3, asi que el grabador ya no espera al MinIO local.
+    depends_on:
+      minio:
+        condition: service_started
+        required: false
+
+  # MinIO local apagado: los clips van a S3 (ver MINIO_* en .env). Su imagen
+  # ademas ya no existe en Docker Hub desde septiembre de 2026. Queda bajo un
+  # perfil para poder volver a el si hiciera falta:
+  #   docker compose --profile minio-local up -d
+  # (en ese caso, cambiar tambien las variables MINIO_* del .env).
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    user: "0:0"
+    healthcheck:
+      disable: true
+    profiles: ["minio-local"]

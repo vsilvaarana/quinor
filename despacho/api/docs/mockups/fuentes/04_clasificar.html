@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>Clasificar el evento · boceto QUINOR</title>
+<style>
+:root{ --tinta:#4a4a4a; --tinta-suave:#8a8a8a; --papel:#fbfaf6; --relleno:#e8e6e0; }
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:34px 30px 44px;
+  background:
+    repeating-linear-gradient(0deg,#e9e7df 0 1px,transparent 1px 22px),
+    repeating-linear-gradient(90deg,#e9e7df 0 1px,transparent 1px 22px);
+  background-color:var(--papel);
+  font-family:"Liberation Mono","DejaVu Sans Mono",monospace; color:var(--tinta);
+}
+.hoja{max-width:1400px; margin:0 auto; display:flex; gap:30px; align-items:flex-start;}
+.cuerpo{flex:1; min-width:0; position:relative;}
+
+.caja{position:relative; padding:14px 16px;}
+.trazo{position:absolute; inset:0; border:2px solid var(--tinta); border-radius:4px;
+       filter:url(#rugoso); pointer-events:none;}
+.trazo.fino{border-width:1.4px; border-color:var(--tinta-suave);}
+.trazo.doble{border-style:double; border-width:4px;}
+.trazo.punteado{border-style:dashed; border-width:1.4px; border-color:var(--tinta-suave);}
+
+.sello{position:absolute; top:-10px; right:0; transform:rotate(-4deg);
+       font-size:13px; letter-spacing:3px; color:#9a4a3a; border:2px solid #9a4a3a;
+       padding:5px 12px; border-radius:3px; filter:url(#rugoso);}
+h1{font-size:17px; margin:0 0 4px; letter-spacing:1px;}
+.sub{font-size:12px; color:var(--tinta-suave); margin-bottom:18px;}
+.pie-hoja{margin-top:24px; font-size:11.5px; color:var(--tinta-suave); line-height:1.6;}
+
+.fila{display:flex; gap:14px; margin-bottom:14px; align-items:stretch;}
+.col{flex:1; min-width:0;}
+
+.barra{height:9px; background:var(--relleno); border-radius:2px; margin:5px 0;}
+.barra.corta{width:45%;} .barra.media{width:70%;} .barra.larga{width:92%;}
+
+.etiqueta{font-size:11px; letter-spacing:1.5px; text-transform:uppercase;
+          color:var(--tinta-suave); margin-bottom:6px;}
+.cifra{font-size:23px; letter-spacing:-0.5px;}
+.cifra small{font-size:12px; color:var(--tinta-suave);}
+.nota{font-size:11px; color:var(--tinta-suave); line-height:1.55;}
+.texto{font-size:12.5px; line-height:1.6;}
+
+.marco-media{position:relative; display:flex; align-items:center;
+             justify-content:center; font-size:12px; letter-spacing:2px;
+             color:var(--tinta-suave); text-align:center;}
+.aspa{position:absolute; inset:0; width:100%; height:100%; filter:url(#rugoso);}
+.aspa line{stroke:var(--tinta-suave); stroke-width:1.2;}
+
+.pastilla{display:inline-block; padding:5px 12px; font-size:11px;
+          letter-spacing:1px; position:relative; margin-right:6px;}
+.pastilla.apagada{opacity:.5;}
+
+.campo{position:relative; padding:11px 12px; font-size:12px; min-height:40px;}
+.campo .rotulo{position:absolute; top:-8px; left:9px; background:var(--papel);
+               padding:0 6px; font-size:10px; letter-spacing:1.2px;
+               text-transform:uppercase; color:var(--tinta-suave);}
+.campo .flecha{position:absolute; right:12px; top:12px; color:var(--tinta-suave);}
+.campo.apagado{opacity:.5;}
+.campo .valor{color:var(--tinta);}
+.campo .hueco{color:#b9b5ac;}
+
+.casilla{display:inline-block; width:13px; height:13px; position:relative;
+         vertical-align:-2px; margin-right:8px;}
+
+table{width:100%; border-collapse:collapse; font-size:11.5px;}
+th{font-size:10px; letter-spacing:1.2px; text-transform:uppercase;
+   color:var(--tinta-suave); text-align:left; padding:6px 7px; white-space:nowrap;}
+td{padding:7px 7px; white-space:nowrap;}
+tr+tr td{border-top:1px dashed #cdcac2;}
+td.der, th.der{text-align:right;}
+
+.margen{width:252px; flex:none; padding-top:52px;}
+.margen .linea{display:flex; gap:9px; margin-bottom:16px; line-height:1.5;
+               font-size:11.5px; color:#7a6a52;}
+.globo{width:22px; height:22px; border:1.6px solid #7a6a52; border-radius:50%;
+       display:flex; align-items:center; justify-content:center; font-size:11px;
+       filter:url(#rugoso); flex:none;}
+.margen .titulin{font-size:10px; letter-spacing:1.2px; text-transform:uppercase;
+                 color:var(--tinta-suave); display:block; margin-bottom:2px;}
+
+.lateral{width:168px; flex:none;}
+.principal{flex:1; min-width:0; padding-left:36px;}
+
+/* El numero del margen, repetido junto al bloque que explica: sin esto el
+   lector tiene que adivinar a que parte del dibujo se refiere cada nota. */
+.conmarca{position:relative;}
+.conmarca>.marca{position:absolute; left:-32px; top:9px; width:22px; height:22px;
+                 border:1.6px solid #7a6a52; border-radius:50%; color:#7a6a52;
+                 display:flex; align-items:center; justify-content:center;
+                 font-size:11px; filter:url(#rugoso);}
+
+/* Catorce columnas no caben a tamano normal. */
+.apretada{letter-spacing:0;}
+.apretada th, .apretada td{padding:4px 3px; font-size:9px;}
+.apretada th{letter-spacing:.4px;}
+.marco{display:flex; gap:16px; align-items:flex-start;}
+</style></head>
+<body>
+
+<svg width="0" height="0" aria-hidden="true">
+  <filter id="rugoso" x="-6%" y="-6%" width="112%" height="112%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.016" numOctaves="3" seed="11" result="ruido"/>
+    <feDisplacementMap in="SourceGraphic" in2="ruido" scale="2.6"
+                       xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<div class="hoja">
+  <div class="cuerpo">
+    <div class="sello">DISENO PREVIO</div>
+    <h1>Clasificar el evento</h1>
+    <div class="sub">HU-13 · diseno previo: la historia todavia no esta desarrollada</div>
+    
+<div class="marco">
+  <div class="lateral"><div class="caja"><span class="trazo fino"></span><div class="etiqueta" style="margin:0;">Usuario</div><div class="barra corta"></div><div class="nota" style="margin-bottom:12px;">rol administrador</div><span class="pastilla"><span class="trazo "></span>Salir</span><div style="height:8px;"></div><span class="pastilla"><span class="trazo "></span>Actualizar</span></div></div>
+  <div class="principal">
+    <div style="font-size:15px; letter-spacing:1px; margin-bottom:2px;">
+      QUINOR S.A.C. · CONTROL DE DESPACHO</div>
+    <div class="nota" style="margin-bottom:12px;">Alternativa 1</div>
+    <div style="margin-bottom:16px;"><span class="pastilla"><span class="trazo "></span>Eventos</span><span class="pastilla apagada"><span class="trazo fino"></span>Salud</span><span class="pastilla apagada"><span class="trazo fino"></span>Tolerancias</span><span class="pastilla apagada"><span class="trazo fino"></span>Mis tokens</span><span class="pastilla apagada"><span class="trazo fino"></span>Usuarios</span></div>
+    
+  <div class="conmarca"><span class="marca">1</span><div class="caja" style="margin-bottom:18px;"><span class="trazo punteado"></span><div style="font-size:14px; letter-spacing:1px;">EVENTO #0 &nbsp;·&nbsp; ORD-0000-0000</div><div class="nota" style="margin-bottom:10px;">el detalle de HU-12 queda arriba: el veredicto se da mirando el clip</div><div class="nota" style="margin:0;">… pesos, conteo, video y fotogramas …</div></div></div>
+
+  <div class="conmarca"><span class="marca">2</span><div class="caja"><span class="trazo "></span>
+    <div class="etiqueta">Veredicto del supervisor</div>
+    <div class="fila" style="margin-bottom:14px;">
+      <div class="col"><span class="pastilla"><span class="trazo "></span>( ) Confirmado</span></div>
+      <div class="col"><span class="pastilla"><span class="trazo "></span>( ) Falso positivo</span></div>
+      <div class="col"></div>
+    </div>
+    <div class="campo" style="min-height:78px;"><span class="trazo fino"></span><span class="rotulo">Comentario (minimo 10 caracteres)</span><span class="hueco">que se vio y que se decidio</span></div>
+    <div class="nota" style="margin:6px 0 14px;">0 / 10 caracteres · el boton no se habilita hasta llegar</div>
+    <div><span class="pastilla"><span class="trazo "></span>Guardar veredicto</span><span class="pastilla apagada"><span class="trazo fino"></span>Cancelar</span></div>
+  </div></div>
+
+  <div class="conmarca"><span class="marca">3</span><div class="caja" style="margin:14px 0;"><span class="trazo doble"></span><div class="texto">! &nbsp;Un evento Confirmado no vuelve a Pendiente (RN-06)</div><div class="nota">la regla la hace cumplir el motor con un trigger; la pantalla lo dice antes de que alguien lo intente</div></div></div>
+
+  <div class="conmarca"><span class="marca">4</span><div class="caja"><span class="trazo "></span><div class="etiqueta">Historial de veredictos</div><table class=""><tr><th>Fecha</th><th>Usuario</th><th>Veredicto</th><th>Comentario</th></tr><tr><td>0000-00-00 00:00</td><td>nombre del supervisor</td><td>en_revision</td><td>texto del comentario</td></tr><tr><td>0000-00-00 00:00</td><td>nombre del supervisor</td><td>confirmado</td><td>texto del comentario</td></tr></table><div class="nota" style="margin-top:8px;">sale de la tabla veredicto y de la auditoria, que no admite UPDATE ni DELETE</div></div></div>
+
+  </div>
+</div>
+    <div class="pie-hoja">Boceto a lapiz de una pantalla <strong>que todavia no existe</strong>. HU-13 es la ultima historia del MVP, y la que desbloquea las dos mediciones del piloto: los falsos positivos y la concordancia de severidad. Esto es la propuesta, no un reflejo de lo construido.</div>
+  </div>
+  <div class="margen"><div class="linea"><span class="globo">1</span><span><span class="titulin">Por que aqui</span>El veredicto se da mirando el clip. Sacarlo a otra pantalla obligaria a recordar lo que se acaba de ver.</span></div><div class="linea"><span class="globo">2</span><span><span class="titulin">Criterio 1</span>El comentario es obligatorio y de diez caracteres minimo (RN-05). El contador esta a la vista para que nadie pulse a ciegas.</span></div><div class="linea"><span class="globo">3</span><span><span class="titulin">Criterio 3</span>Confirmado no retrocede. El trigger que lo impide ya existe; falta traducir su error a una frase en la pantalla.</span></div><div class="linea"><span class="globo">4</span><span><span class="titulin">Criterio 2</span>Queda registrado usuario y fecha. El usuario sale del token, no de un campo que se pueda escribir, y la auditoria no se puede alterar.</span></div></div>
+</div>
+</body></html>

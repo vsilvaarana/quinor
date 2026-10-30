@@ -315,7 +315,10 @@ def procesar_evento(motor: Engine, ajustes: Ajustes, fila: dict,
     cliente = cliente or almacen.crear_cliente(ajustes)
     detalle = {"numero_orden": fila["numero_orden"],
                "clip_url": fila["clip_url"], "origen": "reintento"}
-    with tempfile.TemporaryDirectory(prefix="quinor-conteo-") as temporal:
+    # En el buffer compartido y no en /tmp: YOLO lee el clip por ruta.
+    ajustes.directorio_en_proceso.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="quinor-conteo-",
+                                     dir=ajustes.directorio_en_proceso) as temporal:
         destino = pathlib.Path(temporal) / f"evento-{fila['id']}.mkv"
         try:
             almacen.descargar(cliente, fila["clip_url"], destino)

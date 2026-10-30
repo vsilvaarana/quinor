@@ -1,0 +1,7 @@
+Pon aqui el archivo global-bundle.pem (certificado publico de AWS).
+
+Ya lo tienes en la carpeta despliegue_lightsail: el instalador lo descargo
+ahi. Copialo a esta carpeta. Si no lo encuentras, descargalo de:
+https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+
+Debe quedar asi:  despacho\api\certs\global-bundle.pem

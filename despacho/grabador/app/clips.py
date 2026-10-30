@@ -151,7 +151,10 @@ def procesar_evento(motor: Engine, ajustes: Ajustes, fila: dict,
         "inicio_carga_marcado": fila["inicio_carga"] is not None,
     }
 
-    with tempfile.TemporaryDirectory(prefix="quinor-clip-") as temporal:
+    # En el buffer compartido y no en /tmp: YOLO lee el clip por ruta.
+    ajustes.directorio_en_proceso.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="quinor-clip-",
+                                     dir=ajustes.directorio_en_proceso) as temporal:
         import pathlib
 
         destino = pathlib.Path(temporal) / f"evento-{evento_id}.mkv"

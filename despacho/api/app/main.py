@@ -15,7 +15,9 @@ Estado del Sprint 1:
     HU-03  Evento de discrepancia (Sprint 2)               IMPLEMENTADA
     HU-06  Marca de inicio de carga (Sprint 2)             IMPLEMENTADA aqui;
            el recorte del clip vive en quinor/despacho/grabador
-    HU-17  Cola de tareas                                  PENDING, depende de HU-03
+    HU-11  Bandeja de eventos con filtros (Sprint 2)       IMPLEMENTADA
+    HU-12  Detalle del evento con clip y fotogramas        IMPLEMENTADA
+    HU-17  Cola de tareas                                  Fuera del MVP
 
 La aplicacion se construye con create_app, que recibe su configuracion por
 parametro y cae al entorno solo cuando no se le pasa nada. Ningun modulo guarda
@@ -24,6 +26,8 @@ estado global: el motor, la fabrica de sesiones y los ajustes viven en app.state
 from __future__ import annotations
 
 import contextlib
+import dataclasses
+import datetime as dt
 import logging
 from collections.abc import Iterator
 from decimal import ROUND_HALF_UP, Decimal
@@ -34,27 +38,38 @@ from fastapi.security.api_key import APIKeyHeader
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import almacen as servicio_almacen
+from app import bandeja as servicio_bandeja
 from app import cargas as servicio_cargas
 from app import configuracion as servicio_configuracion
+from app import detalle as servicio_detalle
 from app import eventos as servicio_eventos
 from app import ordenes as servicio_ordenes
 from app import pesadas as servicio_pesadas
 from app import salud as servicio_salud
 from app import seguridad
 from app import usuarios as servicio_usuarios
+from app import veredictos as servicio_veredictos
 from app.config import Ajustes, cargar_ajustes
 from app.db import crear_fabrica_de_sesiones, crear_motor
 from app.models import Usuario
-from app.schemas import (AbrirCarga, AvisoDelEvento, CambiarActivacion,
+from app.schemas import (AbrirCarga, AnalisisLeido, AvisoDelEvento,
+                         BandejaDeEventos,
+                         CambiarActivacion,
                          CambiarClave, CambiarRol,
                          CambioDeTolerancia, CargaLeida,
-                         CapturarPesada, Credenciales, CrearUsuario, EditarTolerancia,
-                         EventoLeido, NotificacionLeida, OrdenLeida,
-                         PersonaEnZonaLeida,
+                         CapturarPesada, ClasificarEvento, ClipLeido,
+                         Credenciales, CrearUsuario,
+                         DetalleDeEvento, EditarTolerancia, EnlaceLeido,
+                         EventoClasificado, EventoLeido, FilaDeBandeja,
+                         FiltrosAplicados,
+                         FotogramaLeido,
+                         NotificacionLeida, OrdenLeida,
+                         PersonaEnZonaLeida, PersonasLeidas, PesosLeidos,
                          PesadaLeida, PesadaRegistrada, PresenciaLeida,
-                         RespuestaSalud, SolicitarToken,
+                         RespuestaSalud, SacosLeidos, SolicitarToken,
                          ToleranciaAplicada, ToleranciaLeida, TokenEmitido, TokenLeido,
-                         UsuarioLeido)
+                         UsuarioLeido, VeredictoLeido)
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -88,6 +103,10 @@ def create_app(
     scale_timeout_seconds: float = None,
     bascula_id: str = None,
     erp_base_url: str = None,
+    minio_endpoint: str = None,
+    minio_access_key: str = None,
+    minio_secret_key: str = None,
+    clip_url_minutos: int = None,
     ajustes: Ajustes = None,
 ) -> FastAPI:
     """Construye una instancia de la aplicacion.
@@ -105,6 +124,10 @@ def create_app(
         scale_timeout_seconds=scale_timeout_seconds,
         bascula_id=bascula_id,
         erp_base_url=erp_base_url,
+        minio_endpoint=minio_endpoint,
+        minio_access_key=minio_access_key,
+        minio_secret_key=minio_secret_key,
+        clip_url_minutos=clip_url_minutos,
     )
     _configurar_logging(ajustes.log_level)
     log = structlog.get_logger("quinor.api")
@@ -128,13 +151,21 @@ def create_app(
         title="QUINOR - Orquestador Alternativa 1",
         description="Deteccion de sustraccion de quinua en despacho. Sprint 1: "
                     "HU-01, HU-02, HU-04 y HU-15. Sprint 2: HU-03.",
-        version="1.2.0",
+        version="1.3.0",
         lifespan=ciclo_de_vida,
     )
     app.state.ajustes = ajustes
     app.state.motor = motor
     app.state.fabrica = fabrica
     app.state.cerrar = motor.dispose
+    # HU-12. Uno por aplicacion, no uno por peticion: firmar es una cuenta local
+    # y el cliente no abre conexiones, pero construirlo en cada detalle seria
+    # repetir la validacion del endpoint cincuenta veces al dia por nada.
+    app.state.almacen = servicio_almacen.Firmador(ajustes)
+    if not ajustes.almacen_configurado:
+        log.warning("almacen_sin_credenciales",
+                    detalle="MINIO_ACCESS_KEY y MINIO_SECRET_KEY sin configurar: "
+                            "el detalle de HU-12 no podra enlazar el clip.")
 
     def obtener_sesion() -> Iterator[Session]:
         sesion = app.state.fabrica()
@@ -183,7 +214,9 @@ def create_app(
             "version": app.version,
             "historias": ("HU-01 pesadas, HU-02 ordenes del ERP, "
                           "HU-03 eventos, HU-04 tolerancias, "
-                          "HU-15 usuarios y tokens"),
+                          "HU-15 usuarios y tokens, HU-11 bandeja, "
+                          "HU-12 detalle del evento, "
+                          "HU-13 clasificacion del evento"),
             "autenticacion": "header X-API-Key con el token de POST /auth/login",
             "documentacion": "/docs",
         }
@@ -449,6 +482,78 @@ def create_app(
         return [_evento_a_esquema(sesion, e)
                 for e in servicio_eventos.listar(sesion, estado, numero_orden, limite)]
 
+    @app.get("/eventos/bandeja", response_model=BandejaDeEventos,
+             dependencies=autenticado, tags=["eventos"],
+             summary="Bandeja de eventos con filtros combinados (HU-11)")
+    def bandeja_de_eventos(
+        estado: str = Query(default=None, max_length=30),
+        severidad: str = Query(default=None, max_length=10),
+        numero_orden: str = Query(default=None, max_length=40),
+        desde: dt.date = Query(default=None,
+                               description="Fecha inicial, inclusive."),
+        hasta: dt.date = Query(default=None,
+                               description="Fecha final, inclusive."),
+        solo_con_faltante: bool = Query(
+            default=False,
+            description="Solo eventos con diferencia de sacos distinta de cero."),
+        pagina: int = Query(default=1, ge=1),
+        tamano: int = Query(default=servicio_bandeja.TAMANO_DE_PAGINA, ge=1,
+                            le=servicio_bandeja.TAMANO_MAXIMO),
+        sin_defectos: bool = Query(
+            default=False,
+            description="Desactiva el filtro por defecto del criterio 3 y "
+                        "busca en todo el historico."),
+        sesion: Session = Depends(obtener_sesion),
+    ) -> BandejaDeEventos:
+        """Los tres criterios de HU-11.
+
+        Criterio 1: devuelve las columnas que la tabla pinta, y solo esas.
+        Criterio 2: una consulta de conteo y una de filas, y el tiempo real
+        viaja en la respuesta para que no haya que creer en la cifra.
+        Criterio 3: sin parametros, pendientes de los ultimos 7 dias, y la
+        respuesta dice que esos filtros los puso el sistema.
+
+        Va en su propia ruta y no amplia `GET /eventos` porque son dos cosas
+        distintas: aquella devuelve el evento completo, con lo que cuesta
+        reunirlo; esta devuelve lo justo, rapido y paginado.
+        """
+        try:
+            filtros = servicio_bandeja.resolver_filtros(
+                estado=estado, severidad=severidad, numero_orden=numero_orden,
+                desde=desde, hasta=hasta, solo_con_faltante=solo_con_faltante,
+                pagina=pagina, tamano=tamano, sin_defectos=sin_defectos)
+        except servicio_bandeja.FiltroInvalido as exc:
+            raise HTTPException(422, detail=str(exc)) from exc
+
+        pagina_leida = servicio_bandeja.listar(sesion, filtros)
+
+        if not pagina_leida.dentro_del_criterio:
+            # El criterio 2 se mide con lo que pasa de verdad. Una pantalla que
+            # se vuelve lenta hay que verla antes de que sea costumbre.
+            log.warning("bandeja_lenta", segundos=round(pagina_leida.segundos, 3),
+                        total=pagina_leida.total,
+                        limite=servicio_bandeja.SEGUNDOS_DEL_CRITERIO)
+
+        return BandejaDeEventos(
+            filas=[FilaDeBandeja(**dataclasses.asdict(f))
+                   for f in pagina_leida.filas],
+            total=pagina_leida.total,
+            pagina=pagina_leida.pagina,
+            tamano=pagina_leida.tamano,
+            paginas=pagina_leida.paginas,
+            desde_fila=pagina_leida.desde_fila,
+            hasta_fila=pagina_leida.hasta_fila,
+            segundos=round(pagina_leida.segundos, 4),
+            dentro_del_criterio=pagina_leida.dentro_del_criterio,
+            filtros=FiltrosAplicados(
+                estado=filtros.estado, severidad=filtros.severidad,
+                numero_orden=filtros.numero_orden, desde=filtros.desde,
+                hasta=filtros.hasta,
+                solo_con_faltante=filtros.solo_con_faltante,
+                por_defecto=list(filtros.aplicados_por_defecto)),
+            resumen=servicio_bandeja.resumen(pagina_leida),
+        )
+
     @app.get("/eventos/{evento_id}", response_model=EventoLeido,
              dependencies=autenticado, tags=["eventos"],
              summary="Detalle de un evento de discrepancia")
@@ -460,6 +565,91 @@ def create_app(
         if evento is None:
             raise HTTPException(404, detail=f"No existe el evento {evento_id}")
         return _evento_a_esquema(sesion, evento)
+
+    @app.get("/eventos/{evento_id}/detalle", response_model=DetalleDeEvento,
+             dependencies=autenticado, tags=["eventos"],
+             summary="Detalle completo de un evento, con clip y fotogramas (HU-12)")
+    def detalle_del_evento(
+        evento_id: int,
+        sesion: Session = Depends(obtener_sesion),
+    ) -> DetalleDeEvento:
+        """Lo que el supervisor necesita para verificar el evento con sus ojos.
+
+        Los pesos, el conteo, las personas, la descripcion y la severidad del
+        criterio 1; el enlace firmado del clip del criterio 2; y los fotogramas
+        del criterio 3, con cual de ellos es la anomalia y en que segundo abrir
+        el reproductor para verla.
+
+        Desde HU-13 trae tambien la decision del supervisor, su historial y que
+        clasificaciones se pueden ofrecer desde el estado actual: la decision se
+        toma mirando esta pantalla, asi que lo que ya decidio alguien antes es
+        parte de lo que hace falta para decidir ahora.
+
+        Una sola respuesta y no cuatro llamadas. La pantalla anterior pedia el
+        evento, las personas y los avisos por separado, y cada una volvia a
+        buscar el evento para comprobar que existe. Aqui son cuatro consultas
+        fijas, las mismas con una presencia que con cuarenta.
+
+        Va en su propia ruta y no amplia `GET /eventos/{id}`: ese contrato lo
+        consume la bandeja de HU-11 y no tiene por que cargar con el enlace
+        firmado ni con las presencias cada vez que alguien abre una fila.
+        """
+        armado = servicio_detalle.armar(sesion, evento_id, app.state.almacen)
+        if armado is None:
+            raise HTTPException(404, detail=f"No existe el evento {evento_id}")
+        return _detalle_a_esquema(armado)
+
+    @app.post("/eventos/{evento_id}/veredicto", response_model=EventoClasificado,
+              status_code=201, tags=["eventos"],
+              summary="Clasifica un evento como Confirmado o Falso positivo (HU-13)")
+    def clasificar_evento(
+        evento_id: int,
+        cuerpo: ClasificarEvento,
+        sesion: Session = Depends(obtener_sesion),
+        actor: Usuario = Depends(requiere_escritura),
+    ) -> EventoClasificado:
+        """La decision del supervisor, con su comentario, su nombre y su fecha.
+
+        El usuario sale del token y no del cuerpo: el criterio 2 pide registrar
+        quien clasifico, y un campo `usuario_id` enviado por el cliente seria
+        exactamente lo contrario, porque permitiria firmar una decision en
+        nombre de otro.
+
+        201 y no 200 porque cada clasificacion crea una fila nueva en el
+        historial, incluso cuando corrige una anterior. Un 409 significa que la
+        transicion no esta permitida, no que haya un conflicto de concurrencia:
+        el mensaje explica por que y que se puede hacer desde donde esta.
+
+        El rol Consulta no llega aqui. Clasificar es cerrar un caso, y quien
+        solo consulta no cierra casos.
+        """
+        try:
+            hecho = servicio_veredictos.clasificar(
+                sesion, evento_id, cuerpo.estado_nuevo, cuerpo.comentario, actor)
+        except servicio_veredictos.EventoNoEncontrado as exc:
+            raise HTTPException(404, detail=str(exc)) from exc
+        except (servicio_veredictos.ComentarioInsuficiente,
+                servicio_veredictos.EstadoDesconocido) as exc:
+            raise HTTPException(422, detail=str(exc)) from exc
+        except servicio_veredictos.TransicionProhibida as exc:
+            raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+        return EventoClasificado(
+            evento_id=hecho.evento_id,
+            estado_anterior=hecho.estado_anterior,
+            estado=hecho.estado,
+            cerrado=hecho.cerrado,
+            fue_correccion=hecho.fue_correccion,
+            veredicto=VeredictoLeido(
+                id=hecho.veredicto_id,
+                estado=hecho.estado,
+                estado_anterior=hecho.estado_anterior,
+                comentario=hecho.comentario,
+                usuario_id=hecho.usuario_id,
+                usuario_nombre=hecho.usuario_nombre,
+                fecha=hecho.fecha,
+                es_correccion=hecho.fue_correccion),
+        )
 
     @app.get("/eventos/{evento_id}/personas", response_model=PresenciaLeida,
              dependencies=autenticado, tags=["eventos"],
@@ -758,6 +948,125 @@ def _evento_a_esquema(sesion: Session, evento) -> EventoLeido:
         descripcion_ia=evento.descripcion_ia,
         fotogramas_clave=list(evento.fotogramas_clave or []),
         clip_url=evento.clip_url,
+    )
+
+
+def _enlace_a_esquema(enlace) -> EnlaceLeido:
+    """El enlace y, cuando no hay, la frase que explica por que. HU-12."""
+    return EnlaceLeido(
+        direccion=enlace.direccion,
+        url=enlace.url,
+        motivo=enlace.motivo,
+        explicacion=enlace.explicacion,
+        minutos=enlace.minutos,
+        reproducible=enlace.reproducible,
+    )
+
+
+def _fotograma_a_esquema(imagen) -> FotogramaLeido:
+    return FotogramaLeido(
+        motivo=imagen.motivo,
+        detalle=imagen.detalle,
+        segundo=imagen.segundo,
+        fotograma=imagen.fotograma,
+        es_anomalia=imagen.es_anomalia,
+        enlace=_enlace_a_esquema(imagen.enlace),
+    )
+
+
+def _veredicto_a_esquema(decision) -> VeredictoLeido:
+    """Una decision del historial de HU-13, con el nombre de quien la tomo."""
+    return VeredictoLeido(
+        id=decision.id,
+        estado=decision.estado,
+        estado_anterior=decision.estado_anterior,
+        comentario=decision.comentario,
+        usuario_id=decision.usuario_id,
+        usuario_nombre=decision.usuario_nombre,
+        fecha=decision.fecha,
+        es_correccion=decision.es_correccion,
+    )
+
+
+def _detalle_a_esquema(armado) -> DetalleDeEvento:
+    """Pasa el detalle de HU-12 al contrato de salida.
+
+    Las propiedades calculadas (si cuadran los sacos, si discrepan las dos
+    severidades, cual es el fotograma de la anomalia) se resuelven aqui y viajan
+    ya resueltas: la pantalla no tiene que volver a decidir nada, y una segunda
+    pantalla manana no puede decidirlo distinto.
+    """
+    return DetalleDeEvento(
+        id=armado.id,
+        estado=armado.estado,
+        creado_en=armado.creado_en,
+        numero_orden=armado.numero_orden,
+        cliente=armado.cliente,
+        producto=armado.producto,
+        pesada_id=armado.pesada_id,
+        bascula_id=armado.bascula_id,
+        pesada_fecha_hora=armado.pesada_fecha_hora,
+        inicio_carga=armado.inicio_carga,
+        pesos=PesosLeidos(
+            esperado_kg=armado.pesos.esperado_kg,
+            real_kg=armado.pesos.real_kg,
+            diferencia_kg=armado.pesos.diferencia_kg,
+            diferencia_pct=armado.pesos.diferencia_pct,
+            tolerancia_aplicada_kg=armado.pesos.tolerancia_aplicada_kg,
+            exceso_sobre_la_tolerancia_kg=armado.pesos.exceso_sobre_la_tolerancia_kg,
+            falta_producto=armado.pesos.falta_producto),
+        sacos=SacosLeidos(
+            esperados=armado.sacos.esperados,
+            contados=armado.sacos.contados,
+            diferencia=armado.sacos.diferencia,
+            analizado=armado.sacos.analizado,
+            cuadran=armado.sacos.cuadran),
+        personas=PersonasLeidas(
+            detectadas=armado.personas.detectadas,
+            personal_anomalo=armado.personas.personal_anomalo,
+            analizado=armado.personas.analizado,
+            segundos_totales=armado.personas.segundos_totales,
+            permanencia_maxima_s=armado.personas.permanencia_maxima_s,
+            presencias=[PersonaEnZonaLeida(
+                id_temporal=p.id_temporal,
+                segundos_en_zona=p.segundos_en_zona,
+                primer_fotograma=p.primer_fotograma,
+                ultimo_fotograma=p.ultimo_fotograma)
+                for p in armado.personas.presencias]),
+        analisis=AnalisisLeido(
+            severidad=armado.analisis.severidad,
+            severidad_ia=armado.analisis.severidad_ia,
+            descripcion=armado.analisis.descripcion,
+            evidencia=list(armado.analisis.evidencia),
+            modelo=armado.analisis.modelo,
+            proveedor=armado.analisis.proveedor,
+            confianza=armado.analisis.confianza,
+            intentos=armado.analisis.intentos,
+            hay_descripcion=armado.analisis.hay_descripcion,
+            discrepan=armado.analisis.discrepan),
+        clip=ClipLeido(
+            enlace=_enlace_a_esquema(armado.clip.enlace),
+            desde=armado.clip.desde,
+            hasta=armado.clip.hasta,
+            duracion_s=armado.clip.duracion_s,
+            camara=armado.clip.camara,
+            cobertura_pct=armado.clip.cobertura_pct,
+            completo=armado.clip.completo,
+            motivo_sin_clip=armado.clip.motivo_sin_clip,
+            reproducible=armado.clip.reproducible,
+            formato=armado.clip.formato),
+        fotogramas=[_fotograma_a_esquema(f) for f in armado.fotogramas],
+        anomalia=(_fotograma_a_esquema(armado.anomalia)
+                  if armado.anomalia else None),
+        segundo_de_entrada=armado.segundo_de_entrada,
+        analizado=armado.analizado,
+        peso_corto_con_sacos_completos=armado.peso_corto_con_sacos_completos,
+        veredicto=(_veredicto_a_esquema(armado.veredicto)
+                   if armado.veredicto else None),
+        decisiones=[_veredicto_a_esquema(d) for d in armado.decisiones],
+        cerrado=armado.cerrado,
+        se_puede_clasificar=armado.se_puede_clasificar,
+        clasificaciones_posibles=list(armado.clasificaciones_posibles),
     )
 
 

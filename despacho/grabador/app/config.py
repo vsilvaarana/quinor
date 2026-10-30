@@ -144,6 +144,18 @@ class Ajustes:
         return self.segundos_antes + self.segundos_despues
 
     @property
+    def directorio_en_proceso(self) -> pathlib.Path:
+        """Donde se dejan los clips mientras YOLO los analiza.
+
+        Dentro del buffer y no en /tmp: el clip viaja al servicio YOLO por ruta,
+        no por HTTP, y YOLO corre en otro contenedor que solo comparte el
+        volumen del buffer. Un clip en el /tmp del grabador no existe para el,
+        y el conteo fallaba con 404 "No existe el clip". La purga no lo toca:
+        solo borra archivos con el nombre de los segmentos de camara.
+        """
+        return self.directorio_buffer / "_en_proceso"
+
+    @property
     def recorta_clips(self) -> bool:
         """Sin credenciales de MinIO no hay donde guardar el clip."""
         return bool(self.minio_access_key and self.minio_secret_key)

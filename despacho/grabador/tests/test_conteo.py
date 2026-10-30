@@ -270,6 +270,10 @@ def test_el_reintento_baja_el_clip_del_almacen(ajustes_con_yolo, motor, cliente_
     # El servicio recibio la ruta del archivo bajado, no la direccion s3://.
     assert servicio_yolo.peticiones[0]["cuerpo"]["clip"].endswith(
         f"evento-{sembrado['evento_id']}.mkv")
+    # Y dentro del buffer: YOLO corre en otro contenedor que solo comparte ese
+    # volumen. Un clip en el /tmp del grabador le llegaba como 404.
+    assert servicio_yolo.peticiones[0]["cuerpo"]["clip"].startswith(
+        str(ajustes_con_yolo.directorio_en_proceso))
 
 
 def test_un_clip_que_ya_no_esta_en_el_almacen_se_anota(ajustes_con_yolo, motor,
@@ -338,6 +342,9 @@ def test_el_clip_recien_recortado_se_cuenta_sin_bajarlo(ajustes_con_yolo, motor,
     assert resultados[0].tiene_clip and resultados[0].tiene_conteo
     assert resultados[0].sacos_contados == 398
     assert resultados[0].diferencia_sacos == -2
+    # El clip recien recortado tambien viaja dentro del buffer compartido.
+    assert servicio_yolo.peticiones[0]["cuerpo"]["clip"].startswith(
+        str(reales.directorio_en_proceso))
 
     fila = leer_evento(motor, sembrado["evento_id"])
     assert fila["clip_url"].startswith("s3://")

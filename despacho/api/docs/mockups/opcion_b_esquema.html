@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Opcion B - Esquema anotado - Detalle del evento (HU-12)</title>
+<style>
+  :root{
+    --texto:#22252a;
+    --suave:#6b7280;
+    --linea:#d6d8dc;
+    --fondo:#ffffff;
+    --panel:#f6f7f8;
+    --acento:#b45309;      /* el unico color: solo donde el sistema tiene que gritar */
+    --acento-suave:#fdf4e7;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:30px 28px 40px; background:#eceef0;
+       font-family:Carlito,"Liberation Sans","DejaVu Sans",sans-serif;
+       color:var(--texto);}
+  .lienzo{max-width:1180px; margin:0 auto; display:flex; gap:22px;}
+  .pantalla{flex:1; background:var(--fondo); border:1px solid #c9ccd1;
+            border-radius:3px; overflow:hidden;}
+  .margen{width:252px; flex:none; padding-top:46px;}
+
+  .cinta{background:#22252a; color:#fff; font-size:11px; letter-spacing:2px;
+         padding:7px 14px; text-transform:uppercase;}
+  .cinta span{opacity:.6; letter-spacing:.5px; text-transform:none;
+              margin-left:10px; font-size:11px;}
+
+  .barra-app{display:flex; align-items:center; gap:18px; padding:12px 18px;
+             border-bottom:1px solid var(--linea);}
+  .marca{font-weight:700; font-size:14px;}
+  .pestanas{display:flex; gap:16px; font-size:13px; color:var(--suave);
+            margin-left:auto;}
+  .pestanas .activa{color:var(--texto); font-weight:700;
+                    border-bottom:2px solid var(--texto); padding-bottom:3px;}
+
+  .contenido{padding:18px 20px 24px 48px;}
+  h2{font-size:17px; margin:0 0 2px;}
+  .migas{font-size:12px; color:var(--suave); margin-bottom:16px;}
+
+  .rejilla{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;
+           margin-bottom:10px;}
+  .dato{border:1px solid var(--linea); border-radius:3px; padding:10px 12px;}
+  .dato .rotulo{font-size:11px; color:var(--suave); text-transform:uppercase;
+                letter-spacing:.6px;}
+  .dato .valor{font-size:22px; font-weight:700; margin-top:2px;}
+  .dato .pie{font-size:11px; color:var(--suave);}
+  .dato.fuerte{border-color:#9ba0a6; background:var(--panel);}
+  .dato.fuerte .valor{color:var(--acento);}
+
+  .apunte{font-size:11.5px; color:var(--suave); margin:0 0 14px;}
+
+  .alerta{border:1px solid var(--acento); background:var(--acento-suave);
+          color:#7c3d06; border-radius:3px; padding:10px 12px; font-size:13px;
+          margin-bottom:18px;}
+  .alerta strong{color:var(--acento);}
+
+  .titulin{font-size:12px; font-weight:700; letter-spacing:.4px;
+           margin:0 0 8px; text-transform:uppercase; color:var(--suave);}
+
+  .video{background:#2b2e33; border-radius:3px; height:250px; position:relative;
+         display:flex; align-items:center; justify-content:center;}
+  .video .placa{color:#9aa0a6; font-size:12px; letter-spacing:1px;
+                text-align:center; line-height:1.7;}
+  .video .play{width:54px; height:54px; border:2px solid #9aa0a6;
+               border-radius:50%; display:flex; align-items:center;
+               justify-content:center; margin:0 auto 10px; color:#9aa0a6;
+               font-size:18px;}
+  .controles{display:flex; align-items:center; gap:10px; background:#1d2024;
+             padding:7px 12px; color:#c9ccd1; font-size:11px;
+             border-radius:0 0 3px 3px;}
+  .progreso{flex:1; height:4px; background:#464b52; border-radius:2px;
+            position:relative;}
+  .progreso i{position:absolute; left:0; top:0; bottom:0; width:17%;
+              background:#c9ccd1; border-radius:2px;}
+  .progreso b{position:absolute; left:17%; top:-3px; width:10px; height:10px;
+              background:var(--acento); border-radius:50%;}
+
+  .tiras{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;
+         margin:16px 0 18px;}
+  .tira .lamina{height:112px; background:#dfe2e5; border:1px solid var(--linea);
+                border-radius:3px; display:flex; align-items:center;
+                justify-content:center; color:#8d9298; font-size:11px;
+                letter-spacing:1px;}
+  .tira.anomalia .lamina{border:2px solid var(--acento);}
+  .tira .rot{font-size:11.5px; margin:6px 0 7px;}
+  .tira .rot em{color:var(--acento); font-style:normal; font-weight:700;}
+  .boton{display:inline-block; border:1px solid #9ba0a6; border-radius:3px;
+         padding:5px 10px; font-size:11.5px; background:#fff;}
+  .tira.vacia{opacity:.45;}
+
+  .bloque{border-top:1px solid var(--linea); padding-top:14px; margin-top:4px;}
+  .severidad{font-size:14px; margin-bottom:8px;}
+  .severidad b{color:var(--acento);}
+  p.cuerpo{font-size:13px; line-height:1.55; margin:0 0 8px;}
+  ul{margin:0 0 10px 18px; padding:0; font-size:12.5px; line-height:1.6;
+     color:#3c4046;}
+  .discrepa{border-left:3px solid var(--acento); background:var(--acento-suave);
+            padding:8px 10px; font-size:12.5px; margin-bottom:8px;}
+  .firma{font-size:11px; color:var(--suave);}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px;}
+  th{background:var(--panel); text-align:left; font-size:11px; color:var(--suave);
+     text-transform:uppercase; letter-spacing:.5px; padding:7px 9px;
+     border-bottom:1px solid var(--linea);}
+  td{padding:7px 9px; border-bottom:1px solid #edeef0;}
+  td.cifra{text-align:right;}
+  th:nth-child(n+2){text-align:right;}
+  td:first-child.cifra{text-align:left;}
+  .rn08{font-size:11px; color:var(--suave); margin-top:7px; line-height:1.5;}
+
+  .info{border:1px dashed var(--linea); border-radius:3px; padding:9px 12px;
+        font-size:12.5px; color:var(--suave); margin-top:16px;}
+
+  /* columna de anotaciones */
+  .nota{display:flex; gap:10px; margin-bottom:20px; font-size:12px;
+        line-height:1.5; color:#41464d;}
+  .num{width:21px; height:21px; flex:none; border-radius:50%;
+       background:#22252a; color:#fff; font-size:11px; display:flex;
+       align-items:center; justify-content:center; font-weight:700;}
+  .nota b{display:block; font-size:11px; text-transform:uppercase;
+          letter-spacing:.6px; color:var(--suave); margin-bottom:1px;}
+  .leyenda{border-top:1px solid #c9ccd1; margin-top:26px; padding-top:12px;
+           font-size:11px; color:var(--suave); line-height:1.6;}
+  .globo{position:absolute; width:21px; height:21px; border-radius:50%;
+         background:#22252a; color:#fff; font-size:11px; display:flex;
+         align-items:center; justify-content:center; font-weight:700;}
+</style>
+</head>
+<body>
+<div class="lienzo">
+
+  <div class="pantalla">
+    <div class="cinta">Mockup · no es la interfaz final
+      <span>Detalle del evento · HU-12 · v0</span></div>
+
+    <div class="barra-app">
+      <div class="marca">QUINOR S.A.C.</div>
+      <div style="font-size:12px; color:var(--suave);">admin@quinor.local · administrador</div>
+      <div class="pestanas">
+        <span class="activa">Eventos</span><span>Salud</span>
+        <span>Tolerancias</span><span>Mis tokens</span><span>Usuarios</span>
+      </div>
+    </div>
+
+    <div class="contenido">
+      <h2>Detalle del evento #1</h2>
+      <div class="migas">ORD-2026-0001 · Andean Grains LLC · Quinua blanca organica ·
+        pesada del 08/10/2026 00:18 · estado <strong>Pendiente</strong></div>
+
+      <div style="position:relative;">
+        <div class="globo" style="left:-36px; top:12px;">1</div>
+        <div class="rejilla">
+          <div class="dato"><div class="rotulo">Peso esperado</div>
+            <div class="valor">20 000,00</div><div class="pie">kg segun la orden</div></div>
+          <div class="dato"><div class="rotulo">Peso real</div>
+            <div class="valor">19 850,00</div><div class="pie">kg en la bascula</div></div>
+          <div class="dato fuerte"><div class="rotulo">Diferencia</div>
+            <div class="valor">-150,00</div><div class="pie">kg · -0,75 %</div></div>
+        </div>
+        <p class="apunte">Se toleraban 100,00 kg para este producto cuando se creo
+          el evento, asi que se paso en 50,00 kg.</p>
+
+        <div class="rejilla">
+          <div class="dato"><div class="rotulo">Sacos en la orden</div>
+            <div class="valor">400</div></div>
+          <div class="dato"><div class="rotulo">Sacos en el video</div>
+            <div class="valor">400</div><div class="pie">conteo YOLO</div></div>
+          <div class="dato"><div class="rotulo">Diferencia</div>
+            <div class="valor">+0</div></div>
+        </div>
+      </div>
+
+      <div style="position:relative;">
+        <div class="globo" style="left:-36px; top:10px;">2</div>
+        <div class="alerta">Falta peso y los bultos cuadran:
+          <strong>apunta a producto sustituido</strong>, no a sacos que no subieron.</div>
+      </div>
+
+      <div style="position:relative;">
+        <div class="globo" style="left:-36px; top:0;">3</div>
+        <div class="titulin">Video del evento</div>
+        <div class="video">
+          <div class="placa">
+            <div class="play">&#9658;</div>
+            CLIP DEL EVENTO · 07:00<br>
+            abre en el segundo 7, el de la anomalia
+          </div>
+        </div>
+        <div class="controles">
+          <span>&#9658;</span><span>00:07 / 07:00</span>
+          <span class="progreso"><i></i><b></b></span>
+          <span>&#128266;</span><span>&#9974;</span>
+        </div>
+        <p class="apunte" style="margin-top:8px;">
+          Ventana recortada de 00:13:44 a 00:20:44, camara rampa-01. El clip esta
+          en Matroska (.mkv): se reproduce en Chrome y en Edge. Enlace valido 30 minutos.
+        </p>
+      </div>
+
+      <div style="position:relative;">
+        <div class="globo" style="left:-36px; top:0;">4</div>
+        <div class="titulin">Fotogramas del analisis</div>
+        <div class="tiras">
+          <div class="tira anomalia">
+            <div class="lamina">FOTOGRAMA s07</div>
+            <div class="rot"><em>Anomalia</em> · un saco sale de la zona de carga</div>
+            <span class="boton">Ver el clip desde el segundo 7</span>
+          </div>
+          <div class="tira">
+            <div class="lamina">FOTOGRAMA s02</div>
+            <div class="rot">El primer saco de la carga</div>
+            <span class="boton">Ver el clip desde el segundo 2</span>
+          </div>
+          <div class="tira vacia">
+            <div class="lamina">HASTA 4 POR EVENTO</div>
+            <div class="rot">pico de personas · ultimo saco</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bloque" style="position:relative;">
+        <div class="globo" style="left:-36px; top:14px;">5</div>
+        <div class="severidad">Severidad: <b>Alta</b>
+          <span style="color:var(--suave); font-size:12px;">(regla RN-04)</span></div>
+        <p class="cuerpo"><strong>Descripcion del modelo:</strong> un operario retira
+          un saco de la rampa y lo deja fuera del contenedor mientras la carga
+          continua. Dos personas permanecen junto a la rampa sin manipular sacos.</p>
+        <ul>
+          <li>un saco sale de la zona de carga en el segundo 7</li>
+          <li>tres personas en la zona y una de ellas mas de un minuto</li>
+          <li>el conteo de sacos cuadra con la orden</li>
+        </ul>
+        <div class="discrepa">El modelo propuso severidad <strong>Media</strong> y la
+          regla dice <strong>Alta</strong>. Manda la regla. Estas discrepancias son
+          las que se revisan cada semana.</div>
+        <div class="firma">Modelo vlm-stub-1 (stub), confianza 82 %, 1 intento.
+          Es una ayuda para priorizar, no una conclusion: la decision es del supervisor.</div>
+      </div>
+
+      <div class="bloque" style="position:relative;">
+        <div class="globo" style="left:-36px; top:14px;">6</div>
+        <div class="severidad" style="font-size:13px;">Personas en la zona de carga: <strong>3</strong></div>
+        <table>
+          <tr><th>Persona (id temporal)</th><th>Tiempo en zona (s)</th>
+              <th>Desde el fotograma</th><th>Hasta el fotograma</th></tr>
+          <tr><td class="cifra">1</td><td class="cifra">92,5</td><td class="cifra">40</td><td class="cifra">2 300</td></tr>
+          <tr><td class="cifra">2</td><td class="cifra">31,0</td><td class="cifra">120</td><td class="cifra">900</td></tr>
+          <tr><td class="cifra">3</td><td class="cifra">8,25</td><td class="cifra">1 800</td><td class="cifra">2 000</td></tr>
+        </table>
+        <div class="rn08">Identificadores temporales del rastreador, validos solo
+          dentro de este clip. No hay identificacion facial ni datos biometricos (RN-08).</div>
+      </div>
+
+      <div class="info">Todavia no ha salido ningun aviso de este evento (HU-10).</div>
+    </div>
+  </div>
+
+  <div class="margen">
+    <div class="nota"><span class="num">1</span>
+      <span><b>Criterio 1</b>Pesos y conteo arriba del todo. La discrepancia es el
+        hecho y existe desde que cerro el camion; el video solo la verifica.</span></div>
+    <div class="nota"><span class="num">2</span>
+      <span><b>Conclusion</b>Peso corto con los bultos cuadrados: producto
+        sustituido. Es el unico uso del color en la pantalla.</span></div>
+    <div class="nota"><span class="num">3</span>
+      <span><b>Criterio 2</b>Reproductor del navegador: la pausa y el avance vienen
+        de serie. El enlace a MinIO caduca a los 30 minutos.</span></div>
+    <div class="nota"><span class="num">4</span>
+      <span><b>Criterio 3</b>El fotograma de la anomalia va primero y enmarcado, y
+        su boton lleva el video a ese segundo.</span></div>
+    <div class="nota"><span class="num">5</span>
+      <span><b>HU-09</b>Las dos severidades juntas: manda la regla, y se ve cuando
+        el modelo discrepa.</span></div>
+    <div class="nota"><span class="num">6</span>
+      <span><b>RN-08</b>Numero temporal y tiempo en zona. Ni foto, ni nombre, ni
+        codigo de empleado.</span></div>
+
+    <div class="leyenda">
+      <strong>Opcion B · esquema anotado.</strong> Gris en todo menos donde el
+      sistema tiene que gritar. Cifras reales y anotaciones numeradas al margen,
+      para que cada bloque quede atado a su criterio de aceptacion.
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
