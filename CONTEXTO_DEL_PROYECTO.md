@@ -5,7 +5,8 @@
 > que, y lo que falta. Esta escrito para que una sesion que empieza de cero
 > pueda continuar sin repetir trabajo ni contradecir lo ya construido.
 >
-> Ultima actualizacion: **19/09/2026**, al cerrar HU-10.
+> Ultima actualizacion: **18/10/2026**, al cerrar HU-13. **El MVP de 14
+> historias esta completo.**
 
 ---
 
@@ -35,7 +36,7 @@ distintas:
 | Archivo | Que contiene |
 |---|---|
 | `Documento_Funcional_Tecnico_Alternativa1_QUINOR.docx` | Especificacion funcional y tecnica, v1.2. Es la fuente de verdad de requisitos |
-| `Backlog_Seguimiento_Alternativa1_QUINOR.xlsx` | Las 20 historias, su estado, puntos y dependencias |
+| `Backlog_Seguimiento_Alternativa1_QUINOR.xlsx` | Hoja `Historias`: las 14 del MVP. Hoja `Backlog`: las 6 postergadas. Estado, puntos y dependencias |
 | `despacho/api/db/01_esquema.sql` | Fuente de verdad del modelo de datos |
 | `despliegue/LEEME.md` | Como desplegar la base en el hosting |
 
@@ -45,11 +46,34 @@ referencias son deliberadas: permiten volver del codigo al requisito.
 
 ---
 
-## 2. Estado del backlog
+## 2. Estado del backlog y alcance del MVP
 
-**10 de 20 historias DONE.** Todo el nucleo de captura, deteccion y analisis
-esta construido y probado. Lo que falta es, sobre todo, la capa de presentacion
-y los extras.
+**MVP de 14 historias, 51 pts. 14 DONE (51 pts). El MVP esta completo.**
+El nucleo de captura, deteccion y analisis esta construido y probado; la pantalla
+por la que entra el supervisor (HU-11), el detalle donde verifica el clip (HU-12)
+y el veredicto con el que cierra el caso (HU-13) tambien. Con HU-13 cerrada, el
+piloto ya puede medir lo que le exige la salida del apartado 10.1 (menos de 20 %
+de falsos positivos) y la concordancia de severidad del apartado 2.4 (85 %):
+ambas cifras se calculan comparando lo que dijo el sistema con lo que decidio el
+supervisor, y esa decision ahora queda escrita.
+
+### Renumeracion del 03/10/2026
+
+Para que la hoja `Historias` no tenga huecos se intercambiaron dos IDs. **El
+codigo, los README, las pruebas y el esquema SQL aun usan la numeracion
+antigua**: donde el codigo diga HU-15 se refiere a usuarios y tokens.
+
+| Antes | Ahora | Historia | Hoja |
+|---|---|---|---|
+| HU-15 | **HU-14** | Usuarios, roles y tokens | Historias (MVP) |
+| HU-14 | **HU-15** | Reportes PDF y Excel | Backlog |
+
+Otros cambios del mismo dia en el Excel: HU-12 y HU-13 pasaron del Sprint 3 al
+Sprint 4 (HU-12 depende de HU-09, que es del Sprint 4), y se corrigio la columna
+"Dependencia cruzada" de HU-03 y HU-16. La copia previa quedo en
+`Backlog_Seguimiento_Alternativa1_QUINOR_pre_reaplicar_20261003.xlsx`.
+
+### Hoja Historias: el MVP
 
 | HU | Sprint | Categoria | Pts | Estado | Donde vive |
 |---|---|---|---|---|---|
@@ -63,28 +87,37 @@ y los extras.
 | HU-08 Personas en zona de carga | 4 | IA | 5 | **DONE** | `despacho/yolo` + grabador |
 | HU-09 Descripcion y severidad (VLM) | 4 | IA | 5 | **DONE** | `despacho/vlm` + grabador |
 | HU-10 Alerta por correo | 4 | Alertas | 3 | **DONE** | `despacho/notificaciones` |
-| HU-15 Usuarios, roles y tokens | 1 | Seguridad | 3 | **DONE** | `despacho/api` |
-| HU-11 Lista de eventos con filtros | 2 | Dashboard | 3 | NEW | pendiente |
-| HU-12 Detalle del evento | 3 | Dashboard | 3 | PENDING | pendiente |
-| HU-13 Clasificar evento | 3 | Dashboard | 2 | PENDING | pendiente |
-| HU-14 Reportes PDF y Excel | 5 | Reportes | 3 | PENDING | pendiente |
-| HU-16 Auditoria consultable | 4 | Seguridad | 2 | PENDING | pendiente |
-| HU-17 Cola de tareas (Celery) | 1 | Plataforma | 3 | PENDING | pendiente |
-| HU-18 Panel de salud | 5 | Plataforma | 3 | PENDING | pendiente |
-| HU-19 Reentrenamiento YOLO | 5 | IA | 5 | PENDING | pendiente |
-| HU-20 Exportar listado | 5 | Reportes | 1 | PENDING | pendiente |
+| HU-11 Bandeja de eventos con filtros | 2 | Dashboard | 3 | **DONE** | `despacho/api` |
+| HU-12 Detalle del evento | 4 | Dashboard | 3 | **DONE** | `despacho/api` + dashboard |
+| HU-13 Clasificar evento | 4 | Dashboard | 2 | **DONE** | `despacho/api` + dashboard |
+| HU-14 Usuarios, roles y tokens (antes HU-15) | 1 | Seguridad | 3 | **DONE** | `despacho/api` |
 
-**HU-11 es la siguiente candidata natural.** Es NEW, no PENDING: su unica
-dependencia (HU-03) esta DONE, y desbloquea HU-12, HU-13, HU-14 y HU-20, que es
-casi todo lo que queda. Buena parte de su trabajo ya esta hecho sin haberlo
-buscado: la vista `v_evento_dashboard` existe, `GET /eventos` responde con
-filtros basicos, y la pestana Eventos del dashboard ya los muestra.
+### Hoja Backlog: postergadas fuera del MVP
 
-**HU-17 sigue PENDING a peticion del usuario.** Sustituiria el sondeo por una
-cola Celery. Mientras no llegue, el bucle del grabador hace de worker. El codigo
-esta preparado: cuando HU-17 entre, lo unico que cambia es **quien llama** a
-`clips.procesar_evento`, `conteo.contar`, `interpretacion.interpretar` y
-`aviso.avisar`, no lo que hacen.
+| HU | Sprint | Categoria | Pts | Motivo |
+|---|---|---|---|---|
+| HU-15 Reportes PDF y Excel (antes HU-14) | 5 | Reportes | 3 | Mide tendencias de semanas, no valida el MVP |
+| HU-16 Auditoria consultable | 4 | Seguridad | 2 | Criterios 1 y 3 ya los cumple el motor; falta solo mostrarla |
+| HU-17 Cola de tareas (Celery) | 1 | Plataforma | 3 | El bucle del grabador hace de worker; su criterio 2 depende de HU-18 |
+| HU-18 Panel de salud | 5 | Plataforma | 3 | Depende de HU-17; `GET /salud` ya registra los fallos |
+| HU-19 Reentrenamiento YOLO | 5 | IA | 5 | Espera el dataset real de QUINOR |
+| HU-20 Exportar listado | 5 | Reportes | 1 | Could, la menor prioridad |
+
+**El MVP esta cerrado.** Las 14 historias estan DONE. Lo que queda en el
+repositorio son las historias de la hoja Backlog, todas fuera del MVP, y el
+despliegue en el hosting, que sigue bloqueado por el apartado 11.
+
+HU-13 se entrego el 18/10/2026: `POST /eventos/{id}/veredicto` con rol Supervisor
+o Administrador, el veredicto y su historial dentro del detalle de HU-12, el
+comentario obligatorio de 10 caracteres (RN-05) contado sobre el texto recortado,
+y el usuario sacado del token y no del cuerpo de la peticion, que es lo que
+impide firmar una decision en nombre de otro.
+
+**HU-17 sigue PENDING a peticion del usuario (hoja Backlog, fuera del MVP).**
+Sustituiria el sondeo por una cola Celery. Mientras no llegue, el bucle del
+grabador hace de worker. El codigo esta preparado: cuando HU-17 entre, lo unico
+que cambia es **quien llama** a `clips.procesar_evento`, `conteo.contar`,
+`interpretacion.interpretar` y `aviso.avisar`, no lo que hacen.
 
 ---
 
@@ -102,7 +135,8 @@ sola base de datos.
    |  FastAPI, puerto 8000                |   |  proceso, sin HTTP       |
    |  HU-01 pesadas    HU-02 ordenes      |   |  HU-05 buffer 72 h       |
    |  HU-03 eventos    HU-04 tolerancias  |   |  HU-06 recorte del clip  |
-   |  HU-15 usuarios y tokens             |   |  Orquesta 07, 08, 09, 10 |
+   |  HU-14 usuarios   HU-11 bandeja      |   |  Orquesta 07, 08, 09, 10 |
+   |  HU-12 detalle    HU-13 veredicto    |   |                          |
    +--------------------------------------+   +--------------------------+
                     |                              |        |         |
                     |                              v        v         v
@@ -182,9 +216,9 @@ de reintento en el bucle, para lo que fallo.
 | Imagen | OpenCV | Fotogramas clave (HU-09) |
 | Modelo VLM | httpx contra Anthropic u OpenAI | HU-09, adaptador por proveedor |
 | Correo | aiosmtplib | HU-10, apartado 6.4 |
-| Almacen | MinIO (S3) | Clips y fotogramas, 12 meses |
-| Dashboard | Streamlit + pandas | HU-04, HU-15 y detalle de eventos |
-| Seguridad | passlib[bcrypt], tokens opacos | HU-15 |
+| Almacen | MinIO (S3) | Clips y fotogramas, 12 meses. El grabador sube, la API **solo firma** enlaces (HU-12) |
+| Dashboard | Streamlit + pandas | HU-04, HU-14, bandeja (HU-11), detalle con video (HU-12) y clasificacion (HU-13) |
+| Seguridad | passlib[bcrypt], tokens opacos | HU-14 |
 | Observabilidad | structlog (JSON) | Los cinco servicios |
 | Pruebas | pytest, pytest-cov, aiosmtpd, moto | Umbral 90 %, real 100 % |
 | Contenedores | Docker Compose, 16 servicios | `despacho/api/docker-compose.yml` |
@@ -209,10 +243,14 @@ quinor/
   Backlog_Seguimiento_Alternativa1_QUINOR.xlsx
   despliegue/                       paquete para el hosting (ver seccion 9)
   despacho/
-    api/                  orquestador: HU-01, 02, 03, 04, 06(marca), 15
+    api/                  orquestador: HU-01, 02, 03, 04, 06(marca), 11, 12, 13, 15
       app/                main.py y un modulo por caso de uso
+      app/bandeja.py      listado con filtros, dos consultas (HU-11)
+      app/detalle.py      detalle del evento, cuatro consultas (HU-12 y HU-13)
+      app/almacen.py      enlaces firmados a MinIO, solo firma (HU-12)
+      app/veredictos.py   clasificacion del evento y transiciones (HU-13)
       db/01_esquema.sql   FUENTE DE VERDAD del modelo de datos
-      dashboard/app.py    interfaz Streamlit
+      dashboard/app.py    interfaz Streamlit, con el reproductor de HU-12
       sim/                simuladores de bascula (Modbus) y ERP
       tests/              una suite por modulo
       docker-compose.yml  los 16 servicios del entorno
@@ -283,11 +321,22 @@ Si una sesion nueva no lee nada mas de este archivo, que lea esto.
 8. **Un fallo se registra, no se esconde.** Todo lo que sale mal deja fila en
    `auditoria` o en la tabla que corresponda, y se ve en el dashboard.
 
-9. **Los comentarios explican el porque, no el que.** El codigo ya dice lo que
+9. **Una lista no lee por fila.** Salido de HU-11: si una pantalla devuelve N
+   filas, tiene que costar un numero fijo de consultas, no N. El detalle de un
+   elemento se pide aparte y se paga una vez. Hay una prueba que lo vigila
+   contando sentencias, y conviene copiarla en cualquier listado nuevo.
+
+10. **Lo accesorio no tumba lo principal.** Salido de HU-12: el detalle de un
+    evento no lanza una excepcion porque el video no se pueda enlazar. Devuelve
+    el hueco con un `motivo` estable y una frase que lo explica, y la pantalla
+    la escribe. El supervisor tiene delante una discrepancia de peso que existe
+    de verdad; perderla por el reproductor seria el peor resultado posible.
+
+11. **Los comentarios explican el porque, no el que.** El codigo ya dice lo que
    hace. Los comentarios dicen por que se eligio eso y que pasaria con la
    alternativa. Mantener ese estilo.
 
-10. **Ante una ambiguedad, preguntar.** Instruccion explicita del proyecto: si
+12. **Ante una ambiguedad, preguntar.** Instruccion explicita del proyecto: si
     falta informacion, detenerse y preguntar antes de seguir.
 
 ---
@@ -300,7 +349,7 @@ Si una sesion nueva no lee nada mas de este archivo, que lea esto.
 | RN-02 | Sin orden valida no hay evento, hay incidencia de integracion | `api/app/eventos.py` |
 | RN-03 | El VLM se invoca solo si YOLO confirma diferencia o personal anomalo | `vlm/app/invocacion.py` |
 | RN-04 | Alta: 2+ sacos o sacos saliendo. Media: 1 saco o personal anomalo. Baja: el resto | `vlm/app/severidad.py` |
-| RN-05 | Cambiar el estado de un evento exige comentario | HU-13, pendiente |
+| RN-05 | Cambiar el estado de un evento exige comentario | `api/app/veredictos.py` y el CHECK `ck_veredicto_comentario` |
 | RN-06 | Un Confirmado no vuelve a Pendiente | trigger `trg_evento_no_reabrir` |
 | RN-07 | Video 72 h en buffer, clips 12 meses | `grabador/app/retencion.py` |
 | RN-08 | Sin identificacion facial ni biometria | `yolo/app/personas.py` y el esquema |
@@ -328,14 +377,21 @@ Estados del apartado 5.3:
             v
    [pendiente_analisis] --- reintento con exito ---> [pendiente]
             |
-            | un supervisor lo abre (HU-13)
+            | el supervisor clasifica (HU-13). El paso por
+            | [en_revision] es opcional: desde cualquier estado
+            | abierto, incluido [sin_clip], se puede cerrar ya
             v
       [en_revision]
          /        \
         v          v
-  [confirmado]  [falso_positivo]
-        |
-        +--- RN-06: de aqui no se vuelve (trigger en el motor)
+  [confirmado] <--> [falso_positivo]     correccion, con comentario
+        |                 |              y fila nueva en el historial
+        +--------+--------+
+                 |
+                 +--- RN-06: de aqui no se vuelve a un estado abierto.
+                      Lo impiden la tabla de transiciones de
+                      `api/app/veredictos.py`, el contrato de la API
+                      y el trigger `trg_evento_no_reabrir` del motor
 ```
 
 Un caso que un supervisor ya abrio o cerro **no lo toca ningun proceso
@@ -351,7 +407,8 @@ revision.
 `notificacion`, `veredicto`, `modelo_version`.
 
 **2 vistas:** `v_salud_actual` (ultimo estado por componente),
-`v_evento_dashboard` (lo que consumira HU-11).
+`v_evento_dashboard` (de HU-03; la bandeja de HU-11 acabo consultando las tablas
+ directamente, para poder combinar filtros sin reescribir la vista).
 
 **3 triggers:** `trg_evento_no_reabrir` (RN-06), `trg_auditoria_no_update` y
 `trg_auditoria_no_delete` (HU-16). Las reglas viven en el motor y no solo en la
@@ -401,11 +458,11 @@ dos motores.
 
 ---
 
-## 10. Pruebas: 1220 en total, 100 % de cobertura
+## 10. Pruebas: 1350 en total, 100 % de cobertura
 
 | Servicio | Pruebas | Cobertura | Contra que corre |
 |---|---|---|---|
-| `api` | 390 | 100 % | MySQL y MariaDB reales, Modbus en proceso, ERP con respx |
+| `api` | 520 | 100 % | MySQL y MariaDB reales, Modbus en proceso, ERP con respx, firma de MinIO sin red |
 | `grabador` | 279 | 100 % | MySQL, ffmpeg, RTSP mediamtx, S3, tres servicios HTTP falsos |
 | `yolo` | 222 | 100 % | Modelo entrenado real, video real generado |
 | `vlm` | 185 | 100 % | Stub que habla el dialecto del proveedor por HTTP |
@@ -438,6 +495,40 @@ MEDIAMTX_BIN=/ruta/a/mediamtx
 - **Dos pruebas fragiles por fecha**, que pasaban hoy y fallarian en una semana.
   Ahora generan sus marcas de tiempo relativas al momento de correr.
 - **La colacion de MySQL 8** en el esquema y en tres `conftest.py`.
+- **HU-11, el N+1 del listado.** `GET /eventos` armaba cada fila con cuatro
+  consultas: la pesada, la orden y dos lecturas de auditoria. Con 200 filas eran
+  mas de 800 consultas, 0,55 s medidos contra 800 eventos. La bandeja nueva usa
+  dos consultas y tarda 0,02 s. Cumplia el criterio igual, pero crecia con las
+  filas, y la pantalla que mas se usa es la que peor envejece. Ahora hay una
+  prueba que **cuenta las sentencias** que llegan al motor y falla si alguien
+  vuelve a leer algo por fila.
+- **HU-12, firmar un enlace de MinIO sale a la red si no le dices la region.**
+  Antes de firmar, el cliente pregunta al servidor donde vive el bucket con un
+  `GET ?location=`. Con MinIO caido, el detalle del evento se quedaba esperando,
+  y lo que subia no era un error de S3 sino un `MaxRetryError` de urllib3, que
+  el `except` no atrapaba: un 500 en la pantalla del supervisor por culpa de un
+  video. Se arregla pasando `region` al construir el cliente (`MINIO_REGION`,
+  'us-east-1' por defecto en MinIO), y la prueba lo vigila apuntando a un host
+  que no resuelve: si alguien quita la region, la suite se cae.
+- **HU-12, el clip es Matroska y no todos los navegadores lo abren.** El
+  grabador escribe `.mkv` a proposito, porque un corte de luz no se lleva el
+  fichero entero. Chrome y Edge lo reproducen; Firefox y Safari no. Comprobado
+  en Chromium: el contenedor se reproduce y se puede adelantar dentro de el
+  siempre que el servidor atienda `Range`, cosa que MinIO hace. La pantalla lo
+  advierte. Si algun dia hace falta Firefox, la salida es remuxar a MP4
+  fragmentado al vuelo, sin reencodificar, y eso toca a HU-06.
+- **HU-13, Streamlit cierra los desplegables en cada redibujado.** El bloque de
+  clasificacion vive dentro del `st.expander` del detalle, y al enviar el
+  formulario la pagina se vuelve a pintar entera: el desplegable se cerraba y el
+  supervisor no llegaba a ver el resultado de su propia decision. Peor aun, la
+  vista por defecto de la bandeja son los Pendientes, asi que el evento recien
+  confirmado desaparecia de la tabla y el detalle ya no se dibujaba. Se arregla
+  con tres cosas: el envio es un callback (`on_click`), que corre **antes** de
+  que la pasada nueva pida el detalle, asi que lo que se pinta ya es el estado
+  nuevo; el callback deja una marca que reabre el desplegable, y se consume al
+  leerla para que un redibujado por otra cosa lo cierre como siempre; y el
+  evento recien clasificado se queda en el selector y la confirmacion se pinta
+  en el panel, fuera del desplegable. Verificado en Chromium con Playwright.
 
 ---
 
@@ -464,18 +555,6 @@ hosting donde vive `vallesol_yolo`, y el `wp-config.php` esta ahi.
 ---
 
 ## 12. Lo que falta, con lo que hay que saber de cada cosa
-
-**HU-11, lista de eventos con filtros.** La siguiente. Su criterio 2 exige
-responder en 2 s. Ya existen `v_evento_dashboard`, el indice
-`ix_evento_estado_creado` que sostiene el filtro por defecto (pendientes de los
-ultimos 7 dias), y `GET /eventos` con filtros basicos.
-
-**HU-12, detalle del evento.** Su criterio 3 pide mostrar el fotograma de la
-anomalia, y eso **ya esta resuelto**: HU-09 extrae los fotogramas clave y los
-guarda en MinIO junto al clip, y `evento.fotogramas_clave` tiene sus URLs.
-
-**HU-13, clasificar.** Aqui entra la RN-05 (comentario obligatorio) y se escribe
-en `veredicto`. El trigger de RN-06 ya protege el retroceso.
 
 **HU-17, cola de tareas.** Redis ya esta en el compose. El codigo esta preparado
 para que solo cambie quien llama.
