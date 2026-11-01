@@ -1,5 +1,6 @@
 # =============================================================================
 # QUINOR - Ajuste local: base en AWS Lightsail y clips en Amazon S3
+# (la MariaDB y el MinIO del compose quedan apagados, bajo perfiles)
 #
 # Docker Compose lee este archivo solo, junto con docker-compose.yml, cada vez
 # que corres "docker compose ...". No hace falta nombrarlo en el comando.
@@ -7,20 +8,41 @@
 services:
   # Certificado de AWS para la base (ssl_ca=/certs/global-bundle.pem en
   # DATABASE_URL). Solo lo necesitan los servicios que hablan con la base.
+  # La base vive en Lightsail, asi que ninguno espera a la MariaDB local
+  # (required: false). El "condition" se repite porque Compose pide que cada
+  # dependencia la tenga.
   api:
     volumes:
       - ./certs:/certs:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: false
   notificaciones:
     volumes:
       - ./certs:/certs:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: false
   grabador:
     volumes:
       - ./certs:/certs:ro
     # Los clips van a S3, asi que el grabador ya no espera al MinIO local.
     depends_on:
+      mysql:
+        condition: service_healthy
+        required: false
       minio:
         condition: service_started
         required: false
+
+  # MariaDB local apagada: la base es MySQL 8 en AWS Lightsail (DATABASE_URL
+  # del .env). Se libera la memoria que ocupaba sin uso. Para volver a ella:
+  #   docker compose --profile mysql-local up -d
+  # y apuntar DATABASE_URL a mysql:3306 (ver .env.example).
+  mysql:
+    profiles: ["mysql-local"]
 
   # MinIO local apagado: los clips van a S3 (ver MINIO_* en .env). Su imagen
   # ademas ya no existe en Docker Hub desde septiembre de 2026. Queda bajo un

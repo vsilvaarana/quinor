@@ -1,5 +1,9 @@
 # Despliegue de la base QUINOR en vallesol.pe (MariaDB)
 
+> **Paquete en desuso (01/11/2026).** Era para el hosting `vallesol.pe`, que se
+> abandono por el asunto de seguridad de `CONTEXTO_DEL_PROYECTO.md`, seccion 11.
+> La base en uso es MySQL 8 en AWS Lightsail: ver `despliegue_lightsail/`.
+
 ## Por que este paquete existe
 
 Desde la sesión de Claude no hay ruta hacia `vallesol.pe`. Se comprobó por los
@@ -167,7 +171,7 @@ DATABASE_URL=mysql+pymysql://vallesol_user_yolo:LA_CLAVE@vallesol.pe:3306/valles
 ```
 
 Si la clave lleva caracteres reservados en una URL, como `[` o `]`, hay que
-escribirlos codificados (`%5B` y `%5D`). Con `Yolo900_900` no hace falta.
+escribirlos codificados (`%5B` y `%5D`).
 
 Si cargaste los datos de demo, los cuatro usuarios entran con la contraseña
 `Quinor2026!`. Cámbiala desde el dashboard en cuanto entres: una contraseña que

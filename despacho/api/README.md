@@ -71,6 +71,12 @@ cp .env.example .env
 docker compose up --build
 ```
 
+`docker-compose.override.yml` se aplica solo: apaga la MariaDB y el MinIO
+locales y monta `certs/` con el certificado de AWS. En el `.env`, `DATABASE_URL`
+apunta a la base de Lightsail (con `ssl_ca=/certs/global-bundle.pem`) y las
+variables `MINIO_*` al bucket S3. Detalle en la seccion 9 y 13 de
+`CONTEXTO_DEL_PROYECTO.md`.
+
 Servicios publicados:
 
 | URL | Servicio |
@@ -80,10 +86,10 @@ Servicios publicados:
 | http://localhost:8000/docs | Documentacion OpenAPI del orquestador |
 | http://localhost:8001/docs | Stub del ERP |
 | http://localhost:8501 | Dashboard Streamlit |
-| localhost:3306 | MariaDB 10.11, el mismo motor que el hosting |
+| localhost:3306 | MariaDB 10.11 local. **Apagada por defecto**: la base es MySQL 8 en AWS Lightsail. Se enciende con `--profile mysql-local` |
 | localhost:5020 | Simulador Modbus de la bascula |
 | localhost:8554 | Servidor RTSP de las camaras simuladas (HU-05) |
-| http://localhost:9001 | Consola de MinIO, almacen de clips (HU-06) |
+| http://localhost:9001 | Consola de MinIO local. **Apagado por defecto**: los clips van a Amazon S3. Se enciende con `--profile minio-local` |
 
 ## Verificacion del entorno
 

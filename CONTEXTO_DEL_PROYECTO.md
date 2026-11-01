@@ -5,8 +5,11 @@
 > que, y lo que falta. Esta escrito para que una sesion que empieza de cero
 > pueda continuar sin repetir trabajo ni contradecir lo ya construido.
 >
-> Ultima actualizacion: **18/10/2026**, al cerrar HU-13. **El MVP de 14
-> historias esta completo.**
+> Ultima actualizacion: **01/11/2026**. La base paso a **MySQL 8 en AWS
+> Lightsail** y los clips a **Amazon S3** (bucket de Lightsail): la MariaDB y el
+> MinIO del compose quedaron apagados. El entorno corre tambien en una maquina
+> virtual de Azure (seccion 13). **El MVP de 14 historias esta completo** desde
+> el 18/10/2026, al cerrar HU-13.
 
 ---
 
@@ -149,8 +152,8 @@ sola base de datos.
                     |                              |        |         |
                     v                              v        v         v
              +---------------------------------------------------------+
-             |   MariaDB (13 tablas, 2 vistas, 3 triggers)             |
-             |   MinIO (clips y fotogramas, 12 meses)                  |
+             |   MySQL 8, AWS Lightsail (13 tablas, 2 vistas, 3 trig.) |
+             |   Amazon S3, bucket Lightsail (clips y fotogramas)      |
              +---------------------------------------------------------+
                     |
                     v
@@ -193,7 +196,7 @@ pesada (HU-01) -> evento si supera tolerancia (HU-03)
 ```
 
 La cadena entera corre en **una sola pasada** por evento, mientras el clip
-todavia esta en disco local y los fotogramas en memoria. Bajarlos luego de MinIO
+todavia esta en disco local y los fotogramas en memoria. Bajarlos luego de S3
 para lo mismo seria pagar dos veces el viaje. Ademas, cada paso tiene su pasada
 de reintento en el bucle, para lo que fallo.
 
@@ -206,8 +209,8 @@ de reintento en el bucle, para lo que fallo.
 | API | FastAPI 0.115 + uvicorn | Los cinco servicios HTTP |
 | Validacion | Pydantic 2.10 | Contratos de entrada y salida |
 | ORM | SQLAlchemy 2.0 | ORM en el orquestador; Core en los demas |
-| Driver | PyMySQL 1.1 + cryptography | MariaDB y MySQL |
-| Base de datos | MariaDB 11.4 (prod), MySQL 8 (verificado) | 13 tablas, 2 vistas, 3 triggers |
+| Driver | PyMySQL 1.1 + cryptography | MySQL 8 y MariaDB. `cryptography` es obligatorio con MySQL 8 (`caching_sha2_password`) |
+| Base de datos | MySQL 8.0 administrado en AWS Lightsail (en uso), MariaDB 10.11 (pruebas y opcion local) | 13 tablas, 2 vistas, 3 triggers. Conexion con SSL (`global-bundle.pem`) |
 | Bascula | pymodbus 3.x | HU-01, Modbus TCP |
 | ERP | httpx | HU-02, cliente REST con cache local |
 | Video | ffmpeg (muxer segment y concat) | HU-05 y HU-06, con `-c copy`, sin reencodificar |
@@ -216,12 +219,12 @@ de reintento en el bucle, para lo que fallo.
 | Imagen | OpenCV | Fotogramas clave (HU-09) |
 | Modelo VLM | httpx contra Anthropic u OpenAI | HU-09, adaptador por proveedor |
 | Correo | aiosmtplib | HU-10, apartado 6.4 |
-| Almacen | MinIO (S3) | Clips y fotogramas, 12 meses. El grabador sube, la API **solo firma** enlaces (HU-12) |
+| Almacen | Amazon S3, bucket de AWS Lightsail | Clips y fotogramas, 12 meses. Se habla con el cliente `minio` de Python, que es un cliente S3 generico. El grabador sube, la API **solo firma** enlaces (HU-12). MinIO local queda como opcion (perfil `minio-local`) |
 | Dashboard | Streamlit + pandas | HU-04, HU-14, bandeja (HU-11), detalle con video (HU-12) y clasificacion (HU-13) |
 | Seguridad | passlib[bcrypt], tokens opacos | HU-14 |
 | Observabilidad | structlog (JSON) | Los cinco servicios |
 | Pruebas | pytest, pytest-cov, aiosmtpd, moto | Umbral 90 %, real 100 % |
-| Contenedores | Docker Compose, 16 servicios | `despacho/api/docker-compose.yml` |
+| Contenedores | Docker Compose: 16 servicios definidos, 13 encendidos por defecto | `docker-compose.yml` mas `docker-compose.override.yml`, que apaga MariaDB y MinIO (seccion 13) |
 
 ### Lo que se decidio NO usar
 
@@ -247,7 +250,7 @@ quinor/
       app/                main.py y un modulo por caso de uso
       app/bandeja.py      listado con filtros, dos consultas (HU-11)
       app/detalle.py      detalle del evento, cuatro consultas (HU-12 y HU-13)
-      app/almacen.py      enlaces firmados a MinIO, solo firma (HU-12)
+      app/almacen.py      enlaces firmados al bucket S3, solo firma (HU-12)
       app/veredictos.py   clasificacion del evento y transiciones (HU-13)
       db/01_esquema.sql   FUENTE DE VERDAD del modelo de datos
       dashboard/app.py    interfaz Streamlit, con el reproductor de HU-12
@@ -414,34 +417,63 @@ revision.
 `trg_auditoria_no_delete` (HU-16). Las reglas viven en el motor y no solo en la
 aplicacion, de modo que ni un script suelto pueda saltarselas.
 
-### Servidor de produccion
+### Servidor en uso: MySQL 8 en AWS Lightsail
 
 | Dato | Valor |
 |---|---|
-| Host | `vallesol.pe` |
-| Base | `vallesol_yolo` |
-| Usuario | `vallesol_user_yolo` |
-| Motor | MariaDB 11.4.13 |
+| Motor | MySQL 8.0, base administrada de AWS Lightsail |
+| Region | us-east-1, zona A (Virginia) |
+| Base | `dbdespacho` |
+| Usuario | `dbmasteruser` (o `quinor_app`, solo lectura y escritura de datos, si se creo) |
+| Conexion | Modo publico, SSL verificado con `despacho/api/certs/global-bundle.pem` |
 
 ```
-DATABASE_URL=mysql+pymysql://vallesol_user_yolo:CLAVE@vallesol.pe:3306/vallesol_yolo?charset=utf8mb4
+DATABASE_URL=mysql+pymysql://USUARIO:CLAVE@ls-xxxx.yyyy.us-east-1.rds.amazonaws.com:3306/dbdespacho?charset=utf8mb4&ssl_ca=/certs/global-bundle.pem
 ```
 
-Si la clave lleva `[` o `]`, hay que codificarlos como `%5B` y `%5D`.
+- `/certs` existe dentro de los contenedores porque `docker-compose.override.yml`
+  monta `./certs` en `api`, `grabador` y `notificaciones`. El certificado es
+  publico (AWS) y esta en el repositorio.
+- Si la clave lleva caracteres reservados en una URL (`@ : / ? # [ ] %`), hay
+  que codificarlos (`%40`, `%3A`, `%2F`, `%3F`, `%23`, `%5B`, `%5D`, `%25`).
+- **Los triggers exigen `log_bin_trust_function_creators=1`.** Lightsail tiene
+  el binlog activo y sin ese parametro `02_triggers.sql` falla con
+  `ERROR 1419`. Se activa en los parametros de la base (Lightsail no deja hacer
+  `SET GLOBAL`); `configurar_lightsail.ps1` lo hace con AWS CLI.
+- **Lightsail trabaja en UTC.** Los scripts de despliegue fijan la sesion en
+  `-05:00` para que las fechas que escriben coincidan con las de la aplicacion.
 
-### Como desplegar
+### Almacen de clips: bucket S3 de Lightsail
 
-La carpeta `despliegue/` tiene el paquete listo y su `LEEME.md`. Orden:
-diagnostico, esquema, triggers, datos demo (opcional), verificacion. Desde
-PowerShell:
+```
+MINIO_ENDPOINT=s3.us-east-1.amazonaws.com
+MINIO_SECURE=true
+MINIO_REGION=us-east-1
+MINIO_BUCKET=nombre-del-bucket
+MINIO_ACCESS_KEY=...   # clave de acceso creada en el bucket de Lightsail
+MINIO_SECRET_KEY=...
+```
+
+Las variables conservan el prefijo `MINIO_` porque el codigo usa el cliente de
+MinIO, que habla S3 con cualquier proveedor. `MINIO_REGION` es obligatoria: sin
+ella el cliente pregunta la region por red antes de firmar (ver seccion 10).
+
+### Como desplegar la base
+
+El paquete de Lightsail esta en `despliegue_lightsail/`, con su
+`LEEME_LIGHTSAIL.md`. Orden: `configurar_lightsail.ps1` (modo publico y
+parametro de los triggers), luego `desplegar_lightsail.ps1`, que corre
+diagnostico, esquema, triggers, datos demo (opcional con `-ConDemo`) y
+verificacion. Las contrasenas se piden por teclado y no quedan en el historial:
 
 ```powershell
-cd C:\proyectos\PI1\quinor\despliegue
-powershell -ExecutionPolicy Bypass -File .\desplegar.ps1 -SoloDiagnostico
+cd C:\proyectos\quinor\despliegue_lightsail
+.\desplegar_lightsail.ps1 -Servidor ls-xxxx.yyyy.us-east-1.rds.amazonaws.com -Base dbdespacho -SoloDiagnostico
 ```
 
-**El despliegue en el servidor esta PENDIENTE**, por el asunto de seguridad de
-la seccion 11.
+La carpeta `despliegue/` es el paquete anterior, pensado para el hosting
+`vallesol.pe` (MariaDB 11.4). **Ese servidor se abandono** por el asunto de
+seguridad de la seccion 11; la carpeta se conserva solo como referencia.
 
 ### Trampa de compatibilidad, ya resuelta
 
@@ -454,7 +486,8 @@ eso rompe el primer JOIN que compare textos.
 
 **Regla para el futuro: no fijar colaciones.** Y si hace falta un upsert, usar
 `VALUES()` dentro de `ON DUPLICATE KEY UPDATE`, que es lo unico que aceptan los
-dos motores.
+dos motores. La regla sigue vigente con Lightsail: la base es MySQL 8, pero las
+suites corren tambien contra MariaDB, y el codigo debe servir en los dos.
 
 ---
 
@@ -514,7 +547,7 @@ MEDIAMTX_BIN=/ruta/a/mediamtx
   grabador escribe `.mkv` a proposito, porque un corte de luz no se lleva el
   fichero entero. Chrome y Edge lo reproducen; Firefox y Safari no. Comprobado
   en Chromium: el contenedor se reproduce y se puede adelantar dentro de el
-  siempre que el servidor atienda `Range`, cosa que MinIO hace. La pantalla lo
+  siempre que el servidor atienda `Range`, cosa que MinIO y S3 hacen. La pantalla lo
   advierte. Si algun dia hace falta Firefox, la salida es remuxar a MP4
   fragmentado al vuelo, sin reencodificar, y eso toca a HU-06.
 - **HU-13, Streamlit cierra los desplegables en cada redibujado.** El bloque de
@@ -532,7 +565,7 @@ MEDIAMTX_BIN=/ruta/a/mediamtx
 
 ---
 
-## 11. Asunto de seguridad abierto (18/09/2026)
+## 11. Asunto de seguridad (18/09/2026): por que se dejo vallesol.pe
 
 **El sitio `vallesol.pe` esta comprometido.** Sirve una falsa verificacion de
 Cloudflare que pide al visitante pulsar Win+R, Ctrl+V y Enter. Eso ejecuta lo
@@ -547,10 +580,16 @@ que el atacante puso en el portapapeles. Es el ataque ClickFix.
   21:18. **Windows Defender lo bloqueo**: no hay eventos de Windows Installer de
   esa hora, ni programas nuevos, ni tareas programadas, ni rastro DNS.
 
-**Antes de desplegar la base conviene:** limpiar la inyeccion en WordPress,
-revisar los administradores de WordPress, y rotar credenciales de cPanel, FTP,
-WordPress, correo y base de datos. Quien inyecto el script tuvo acceso al mismo
-hosting donde vive `vallesol_yolo`, y el `wp-config.php` esta ahi.
+Quien inyecto el script tuvo acceso al mismo hosting donde vivia
+`vallesol_yolo`, y el `wp-config.php` esta ahi. **Por eso la base se movio a
+AWS Lightsail** y el sistema ya no usa ese servidor.
+
+**Sigue pendiente del lado de vallesol.pe:** limpiar la inyeccion en WordPress,
+revisar sus administradores y rotar credenciales de cPanel, FTP, WordPress,
+correo y base de datos. Ademas, la clave de `vallesol_user_yolo` estuvo escrita
+en `despliegue/LEEME.md` y ese archivo se publico en GitHub: se quito del
+archivo el 01/11/2026, pero **sigue en el historial del repositorio**, asi que
+hay que cambiarla en el hosting.
 
 ---
 
@@ -600,18 +639,84 @@ video real, correo llegando a un buzon real, capturas del dashboard.
 
 ```bash
 cd despacho/api
-cp .env.example .env     # y rellenar
-docker compose up -d
+cp .env.example .env     # y rellenar: DATABASE_URL de Lightsail y MINIO_* del bucket S3
+docker compose up -d --build
 ```
 
-16 servicios, entre ellos los simuladores que sustituyen a la planta: bascula
-Modbus, ERP falso, dos camaras publicando por RTSP, MinIO, mailpit en
-`localhost:8025` para leer los correos, y el stub del proveedor de IA.
+Compose lee solo, sin nombrarlo, `docker-compose.override.yml`, que adapta el
+entorno a la nube:
 
-La base del compose es **MariaDB 11.4**, el mismo motor del hosting. Se cambio
-desde MySQL 8.4 el 19/09/2026, despues de que la diferencia de colaciones
-demostrara que desarrollar contra un motor y desplegar en otro esconde problemas
-hasta el peor momento.
+- **Apaga la MariaDB local** (perfil `mysql-local`): la base es la de Lightsail.
+  `api`, `grabador` y `notificaciones` ya no la esperan (`required: false`).
+- **Apaga el MinIO local** (perfil `minio-local`): los clips van a S3. Ademas la
+  imagen `minio/minio` ya no esta en Docker Hub desde septiembre de 2026; si
+  hiciera falta volver a el, el override usa `cgr.dev/chainguard/minio`.
+- **Monta `./certs`** con el certificado de AWS en los servicios que hablan con
+  la base.
+
+Quedan 13 servicios encendidos, entre ellos los simuladores que sustituyen a la
+planta: bascula Modbus, ERP falso, dos camaras publicando por RTSP, mailpit en
+`localhost:8025` para leer los correos, y el stub del proveedor de IA. Redis
+espera a HU-17 (perfil `sprint2`).
+
+Para volver a la base y al almacen locales, sin nube:
+
+```bash
+docker compose --profile mysql-local --profile minio-local up -d
+```
+
+y apuntar `DATABASE_URL` a `mysql:3306` y `MINIO_*` a `minio:9000` (los valores
+de `.env.example`).
+
+**El `.env` no esta en Git** (lo ignora `.gitignore`): tiene las claves de la
+base, del bucket y del correo. Se pasa a mano y por un medio privado. Si se crea
+o edita en Windows y se lleva a Linux, quitarle los fines de linea de Windows:
+`sed -i 's/\r$//' .env`.
+
+**No encender dos instalaciones contra la misma base.** Los dos grabadores
+tomarian los mismos eventos y cada uno recortaria video de su propio buffer.
+Para trabajar en paralelo, una base aparte en la misma instancia de Lightsail
+(`CREATE DATABASE ...` y `desplegar_lightsail.ps1 -Base ...`) y un bucket aparte
+(si no, el clip del evento 1 de uno pisa el del otro).
+
+La MariaDB del compose (imagen `mariadb:10.11`) se adopto el 19/09/2026 para
+desarrollar con el mismo motor del hosting `vallesol.pe`. Al pasar a Lightsail
+la base real volvio a ser MySQL 8; la MariaDB queda como opcion local y las
+suites siguen pasando en los dos motores.
+
+### Entorno en la nube: maquina virtual de Azure
+
+Para mostrar el sistema sin depender de una PC encendida, corre tambien en una
+maquina virtual de Azure for Students, contra la misma base y el mismo bucket.
+
+| Dato | Valor |
+|---|---|
+| Maquina | `quinor-vm`, grupo de recursos `quinor-rg`, East US 2 |
+| Tamano | Standard D4s_v3: 4 vCPU, 16 GB, unos 0,19 USD por hora encendida |
+| Sistema | Ubuntu Server 24.04 LTS, disco SSD estandar de 64 GB |
+| Usuario | `azureuser`, entra solo con la clave SSH `quinor-vm_key.pem` |
+| Red | Solo el puerto 22 abierto. El dashboard se abre por tunel SSH |
+| Apagado automatico | 04:00 UTC (23:00 en Lima), todos los dias |
+| Credito | 100 USD de Azure for Students, vence el 01/12/2026; renovable si se sigue siendo estudiante |
+
+El proyecto esta en `~/quinor`, clonado de GitHub. El `.env` se copio con
+`scp`. Los contenedores arrancan solos al encender la maquina.
+
+```powershell
+# Desde la PC: tunel para abrir el dashboard en http://localhost:8501
+ssh -i $HOME\.ssh\quinor-vm_key.pem -L 8501:localhost:8501 -L 8000:localhost:8000 -L 8025:localhost:8025 azureuser@IP_PUBLICA
+```
+
+```bash
+# En la maquina: traer cambios de GitHub y reconstruir
+cd ~/quinor && git pull && cd despacho/api && docker compose up -d --build
+```
+
+- **La IP publica cambia** cada vez que se enciende: mirarla en el portal.
+- Apagada, la maquina no cobra procesador, solo el disco (unos 5 USD al mes).
+- Para mostrarla a alguien sin tunel, abrir el puerto 8501 en Redes **solo para
+  su IP**, y borrar la regla despues. No abrir 3306, 8000 ni 8025.
+- Antes del 01/12/2026, renovar el credito o asumir que la maquina se apaga.
 
 ---
 
@@ -620,7 +725,7 @@ hasta el peor momento.
 | Termino | Que es |
 |---|---|
 | Evento | Discrepancia entre peso real y esperado que supero la tolerancia |
-| Clip | Recorte de video de la ventana de esa carga, en MinIO |
+| Clip | Recorte de video de la ventana de esa carga, en el bucket S3 |
 | Buffer | Video continuo de las ultimas 72 h, en disco local |
 | Fotograma clave | Imagen elegida por lo que ocurre en ella (saco saliente, pico de personas) |
 | Severidad | Alta, Media o Baja segun RN-04. La calcula una regla, no el modelo |
