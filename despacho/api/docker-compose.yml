@@ -191,7 +191,12 @@ services:
     environment:
       CAMERA_ID: camara-01
       CAMERA_PUBLISH_URL: rtsp://rtsp-server:8554/rampa-01
+      # Videos reales: si la carpeta tiene videos, se publican en bucle en lugar
+      # de la senal sintetica. Vacia, todo sigue como antes. Ver videos/LEEME.md.
+      CAMERA_VIDEO_DIR: /videos
       TZ: ${TZ}
+    volumes:
+      - ${CAMERA_VIDEOS_DIR:-./videos}/rampa-01:/videos:ro
     depends_on:
       - rtsp-server
     restart: unless-stopped
@@ -201,7 +206,10 @@ services:
     environment:
       CAMERA_ID: camara-02
       CAMERA_PUBLISH_URL: rtsp://rtsp-server:8554/rampa-02
+      CAMERA_VIDEO_DIR: /videos
       TZ: ${TZ}
+    volumes:
+      - ${CAMERA_VIDEOS_DIR:-./videos}/rampa-02:/videos:ro
 
   # ------------------------------------------------ Grabador de video HU-05
   grabador:

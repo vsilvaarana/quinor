@@ -371,6 +371,27 @@ Una camara IP es un servidor RTSP, asi que el simulador son dos piezas:
 El grabador se conecta contra el servidor RTSP igual que lo hara contra la camara
 real: al cambiar `CAMERAS` por las URL de planta, no cambia una linea de codigo.
 
+### Con videos reales
+
+Si `CAMERA_VIDEO_DIR` apunta a una carpeta con videos, la camara simulada los
+publica en bucle en lugar de la senal sintetica. El compose monta
+`despacho/api/videos/rampa-01` y `rampa-02` (o `CAMERA_VIDEOS_DIR` del `.env`);
+el uso esta en `despacho/api/videos/LEEME.md`.
+
+Dos decisiones que no son obvias:
+
+- **Cada video se convierte una vez al arrancar** (H.264, `CAMERA_VIDEO_SIZE`,
+  15 fps, un fotograma clave por segundo) y luego se publica con `-c copy`. El
+  demuxer concat de ffmpeg solo encadena archivos con los mismos parametros: un
+  H.264 seguido de un H.265 publicaba basura sin dar error. Y el grabador
+  necesita el fotograma clave por segundo para cortar segmentos exactos.
+- **El reloj no se quema en los videos reales**, solo el identificador de
+  camara: la conversion es previa y el reloj quedaria congelado en esa hora.
+
+`tests/test_camara_sim.py` lo cubre, incluida una prueba con ffmpeg real que
+encadena un H.265 1080p y un H.264 480p y comprueba que sale un solo flujo
+H.264 1280x720 que da vueltas.
+
 ## Pruebas
 
 ```bash
