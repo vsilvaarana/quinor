@@ -665,10 +665,12 @@ espera a HU-17 (perfil `sprint2`).
 `dashboard/app.py`. La bandeja muestra un evento por tarjeta, con la barra de
 pasos Pesada, Video, Conteo y Analisis, y un boton Revisar que abre su detalle;
 la tabla sigue en "Ver como tabla". La pesada marca los pasos Orden, Carga y
-Peso, el reloj de carga avanza solo (`st.fragment(run_every=1)`) y el registro
-manual avisa antes de guardar si se abrira un caso. Las pestanas se llaman
-Eventos, Nueva pesada, Ordenes, Camaras, Estado del sistema, Tolerancias, Mis
-tokens y Usuarios: el manual de usuario aun usa los nombres anteriores.
+Pesaje, el reloj de carga avanza solo (`st.fragment(run_every=1)`) y el
+ingreso manual avisa antes de registrar si se generara un evento. Los textos de
+la interfaz van en registro formal (usted) y con tildes. Las pestanas se llaman
+Eventos, Registro de pesada, Órdenes, Cámaras, Estado del sistema, Tolerancias,
+Tokens de acceso y Usuarios: el manual de usuario aun usa los nombres
+anteriores.
 
 **Videos reales sin camaras.** Las camaras simuladas publican en bucle los
 videos que haya en `despacho/api/videos/rampa-01` y `rampa-02` (o en la carpeta
