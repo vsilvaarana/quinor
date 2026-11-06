@@ -32,7 +32,7 @@ import time
 
 import httpx
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.engine import Engine
 
 from app import almacen, tablas
@@ -383,7 +383,8 @@ def _avisar(al_clasificar, evento_id: int, clasificado_en: float,
 # ------------------------------------------------------------- los reintentos
 def pendientes_de_interpretar(motor: Engine, ajustes: Ajustes,
                               limite: int = 10) -> list[dict]:
-    """Eventos ya analizados por YOLO a los que les falta la severidad.
+    """Eventos ya analizados por YOLO a los que les falta la severidad, o cuya
+    descripcion del modelo fallo (estado Pendiente de analisis).
 
     Se excluyen los que agotaron los intentos, contando sus filas de auditoria,
     por lo mismo que en HU-07: un proveedor caido un dia entero tendria al
@@ -414,7 +415,12 @@ def pendientes_de_interpretar(motor: Engine, ajustes: Ajustes,
             .join(tablas.pesada, tablas.evento.c.pesada_id == tablas.pesada.c.id)
             .join(tablas.orden_despacho,
                   tablas.pesada.c.orden_id == tablas.orden_despacho.c.id))
-        .where(tablas.evento.c.severidad.is_(None),
+        # Sin severidad, o con la del modelo fallida: cuando el proveedor
+        # falla, la severidad de la regla RN-04 se guarda igual (HU-10 la
+        # necesita) y el evento queda en Pendiente de analisis. Mirar solo la
+        # severidad dejaba esos eventos fuera del reintento para siempre.
+        .where(or_(tablas.evento.c.severidad.is_(None),
+                   tablas.evento.c.estado == PENDIENTE_ANALISIS),
                tablas.evento.c.sacos_contados.is_not(None),
                tablas.evento.c.estado.not_in(ESTADOS_QUE_NO_SE_TOCAN),
                fallos < ajustes.intentos_de_interpretacion)

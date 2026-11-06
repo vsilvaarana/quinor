@@ -731,6 +731,11 @@ cd ~/quinor && git pull && cd despacho/api && docker compose up -d --build
   contenedor, y el servicio `vlm` recibia `Connection refused`: los eventos
   quedaban en Pendiente de analisis y sin fotogramas. Desde el 05/11/2026
   `sim/vlm_stub.py` escucha en `0.0.0.0` cuando corre como servicio.
+- **La descripcion fallida no se reintentaba.** Cuando el proveedor falla, la
+  severidad de la regla se guarda igual y el evento queda en Pendiente de
+  analisis; el reintento solo buscaba eventos sin severidad, asi que nunca los
+  volvia a tomar. Desde el 05/11/2026 `pendientes_de_interpretar` toma tambien
+  los que estan en Pendiente de analisis (prueba en `test_interpretacion.py`).
 - **Sin GPU, YOLO tarda mas que el video.** Un clip de 9 minutos tomo unos 13
   minutos en la D4s_v3. El grabador espera `YOLO_TIMEOUT_SECONDS` (600 por
   defecto); en esta maquina conviene 2400 en el `.env`, o subir
