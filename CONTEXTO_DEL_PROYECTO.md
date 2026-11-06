@@ -727,6 +727,15 @@ cd ~/quinor && git pull && cd despacho/api && docker compose up -d --build
   y `notificaciones` reciclan sus conexiones a los 240 s y PyMySQL tiene limites
   de tiempo (`RECICLAR_SEGUNDOS` y `LIMITES_DE_CONEXION` en cada `crear_motor`).
   No subir el reciclado por encima de 4 minutos.
+- **El stub del proveedor de IA escuchaba solo en 127.0.0.1** dentro de su
+  contenedor, y el servicio `vlm` recibia `Connection refused`: los eventos
+  quedaban en Pendiente de analisis y sin fotogramas. Desde el 05/11/2026
+  `sim/vlm_stub.py` escucha en `0.0.0.0` cuando corre como servicio.
+- **Sin GPU, YOLO tarda mas que el video.** Un clip de 9 minutos tomo unos 13
+  minutos en la D4s_v3. El grabador espera `YOLO_TIMEOUT_SECONDS` (600 por
+  defecto); en esta maquina conviene 2400 en el `.env`, o subir
+  `YOLO_FRAME_STRIDE`. Si el grabador se cansa de esperar, YOLO sigue
+  analizando igual: reiniciar `yolo` antes de reintentar evita analisis dobles.
 - Apagada, la maquina no cobra procesador, solo el disco (unos 5 USD al mes).
 - Para mostrarla a alguien sin tunel, abrir el puerto 8501 en Redes **solo para
   su IP**, y borrar la regla despues. No abrir 3306, 8000 ni 8025.

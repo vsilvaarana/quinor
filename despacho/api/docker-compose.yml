@@ -293,6 +293,9 @@ services:
       # que es lo que HU-19 va a necesitar al reentrenar con la rampa real.
       YOLO_WEIGHTS: /modelos/sacos.pt
       YOLO_DEVICE: ${YOLO_DEVICE:-cpu}
+      # Fotogramas que se saltan entre inferencias (ver .env.example). Antes no
+      # llegaba al contenedor y el valor del .env no tenia efecto.
+      YOLO_FRAME_STRIDE: ${YOLO_FRAME_STRIDE:-1}
       # Calibracion de la linea de carga y de la zona donde se mide la
       # permanencia de las personas (HU-08), en coordenadas relativas. Las dos
       # se ajustan en el piloto mirando un clip real (apartado 9.1).

@@ -169,20 +169,31 @@ def _de_la_peticion(cuerpo: dict) -> tuple[str, int]:
     return "\n".join(textos), imagenes
 
 
-def arrancar(puerto: int = 0, estado: Estado | None = None):
-    """Levanta el stub y devuelve (servidor, estado, url)."""
+def arrancar(puerto: int = 0, estado: Estado | None = None,
+             host: str = "127.0.0.1"):
+    """Levanta el stub y devuelve (servidor, estado, url).
+
+    Las pruebas lo levantan en 127.0.0.1, dentro del mismo proceso. En el
+    compose corre en su propio contenedor y el servicio vlm lo llama por la red
+    de Docker: ahi tiene que escuchar en 0.0.0.0, o cada llamada termina en
+    "Connection refused" y el evento queda en Pendiente de analisis.
+    """
     estado = estado or Estado()
-    servidor = ThreadingHTTPServer(("127.0.0.1", puerto),
+    servidor = ThreadingHTTPServer((host, puerto),
                                    construir_manejador(estado))
     hilo = threading.Thread(target=servidor.serve_forever, daemon=True)
     hilo.start()
-    url = f"http://127.0.0.1:{servidor.server_address[1]}"
+    visible = "127.0.0.1" if host in ("0.0.0.0", "") else host
+    url = f"http://{visible}:{servidor.server_address[1]}"
     return servidor, estado, url
 
 
 def main() -> int:      # pragma: no cover - punto de entrada
     analizador = argparse.ArgumentParser(description=__doc__)
     analizador.add_argument("--puerto", type=int, default=8404)
+    analizador.add_argument("--host", default="0.0.0.0",
+                            help="Direccion donde escuchar. 0.0.0.0 para que lo "
+                                 "alcancen otros contenedores.")
     analizador.add_argument("--fallar", type=int, default=0,
                             help="Codigo HTTP a devolver.")
     analizador.add_argument("--veces", type=int, default=-1,
@@ -196,8 +207,8 @@ def main() -> int:      # pragma: no cover - punto de entrada
 
     estado = Estado(fallar=argumentos.fallar, veces=argumentos.veces,
                     basura=argumentos.basura, clave=argumentos.clave)
-    servidor, _, url = arrancar(argumentos.puerto, estado)
-    print(f"Stub de vision-lenguaje escuchando en {url}")
+    servidor, _, url = arrancar(argumentos.puerto, estado, host=argumentos.host)
+    print(f"Stub de vision-lenguaje escuchando en {argumentos.host}:{argumentos.puerto}")
     print("Las respuestas son de desarrollo: aqui no hay ningun modelo.")
     try:
         servidor.serve_forever()
