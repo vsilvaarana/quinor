@@ -423,14 +423,19 @@ def _filtros_de_la_bandeja() -> dict:
     estado = fila1[0].selectbox(
         "Estado", ["por defecto", "todos", "pendiente", "pendiente_analisis",
                    "en_revision", "confirmado", "falso_positivo", "sin_clip"],
-        help="Por defecto son los Pendientes, segun el criterio 3 de HU-11.")
+        format_func=lambda e: {"por defecto": "Pendientes", "todos": "Todos"}.get(
+            e, NOMBRE_DEL_ESTADO.get(e, e)))
     severidad = fila1[1].selectbox("Severidad",
-                                   ["todas", "alta", "media", "baja"])
+                                   ["todas", "alta", "media", "baja"],
+                                   format_func=str.capitalize)
     rango = fila1[2].selectbox(
         "Periodo", ["ultimos 7 dias", "hoy", "ultimos 30 dias", "todo",
-                    "personalizado"])
-    orden = fila1[3].text_input("Numero de orden",
-                                placeholder="0148, o la orden completa")
+                    "personalizado"],
+        format_func=lambda r: {"ultimos 7 dias": "Últimos 7 días", "hoy": "Hoy",
+                               "ultimos 30 dias": "Últimos 30 días", "todo": "Todo",
+                               "personalizado": "Personalizado"}[r])
+    orden = fila1[3].text_input("Número de orden",
+                                placeholder="Ej.: 0148 u ORD-2026-0148")
 
     desde = hasta = None
     if rango == "personalizado":
@@ -442,10 +447,9 @@ def _filtros_de_la_bandeja() -> dict:
     fila3 = st.columns([2, 1, 1])
     solo_faltante = fila3[0].checkbox(
         "Solo con faltante de sacos",
-        help="Deja fuera las cargas donde el conteo cuadra. Peso corto con los "
-             "sacos completos apunta a sustitucion y se ve quitando esto.")
-    tamano = fila3[1].selectbox("Filas por pagina", [25, 50, 100, 200], index=1)
-    pagina = fila3[2].number_input("Pagina", min_value=1, value=1, step=1)
+        help="Excluye las cargas cuyo conteo de sacos coincide con la orden.")
+    tamano = fila3[1].selectbox("Filas por página", [25, 50, 100, 200], index=1)
+    pagina = fila3[2].number_input("Página", min_value=1, value=1, step=1)
 
     filtros: dict = {"tamano": tamano, "pagina": int(pagina)}
     if estado == "todos":
@@ -524,7 +528,7 @@ def _senales_de_la_bandeja(bandeja: dict) -> None:
             "sacos. Indica revisar el video; no constituye una conclusión sobre "
             "ninguna persona.\n"
             "- **Sin descripción automática:** el modelo de visión-lenguaje no "
-            "respondió. La severidad se mantiene, pues proviene de la regla RN-04.\n"
+            "respondió. La severidad se mantiene, pues proviene de las reglas del negocio.\n"
             "- **Sin video:** no existe grabación de esa carga. El motivo consta en "
             "la auditoría.")
 
@@ -538,19 +542,18 @@ def _pie_de_la_bandeja(bandeja: dict) -> None:
     total = bandeja["total"]
     if total:
         donde = (f"Mostrando {bandeja['desde_fila']} a {bandeja['hasta_fila']} "
-                 f"de {total} evento(s). Pagina {bandeja['pagina']} de "
+                 f"de {total} evento(s). Página {bandeja['pagina']} de "
                  f"{bandeja['paginas']}.")
     else:
         donde = "Ningún evento cumple el filtro."
 
     segundos = bandeja["segundos"]
     if bandeja["dentro_del_criterio"]:
-        st.caption(f"{donde} Consulta resuelta en {segundos * 1000:.0f} ms.")
+        st.caption(donde)
     else:
         # El criterio 2 se mide con lo que pasa de verdad, y una pantalla que se
         # vuelve lenta hay que verla antes de que sea costumbre.
-        st.warning(f"{donde} La consulta tardo {segundos:.1f} s, por encima de "
-                   f"los 2 s que exige el criterio 2 de HU-11.")
+        st.warning(f"{donde} La consulta tardó {segundos:.1f} s, más de lo habitual.")
 
 
 def _detalle_del_evento(eventos: list[dict]) -> None:
@@ -810,14 +813,14 @@ def _analisis_del_detalle(detalle: dict) -> None:
     analisis = detalle["analisis"]
 
     if analisis["severidad"]:
-        st.write(f"Severidad: **{analisis['severidad'].capitalize()}** (regla RN-04)")
+        st.write(f"Severidad: **{analisis['severidad'].capitalize()}**")
 
     if not analisis["hay_descripcion"]:
         if detalle["estado"] == "pendiente_analisis":
-            st.info("El modelo de vision-lenguaje fallo tras sus reintentos. "
-                    "La severidad de arriba sale de la regla, no del modelo.")
+            st.info("La descripción automática no está disponible: el servicio de "
+                    "análisis no respondió. La severidad se calculó igualmente.")
         elif detalle["clip"]["reproducible"]:
-            st.caption("El clip todavia no tiene descripcion del modelo.")
+            st.caption("La descripción automática del video aún no está disponible.")
         return
 
     st.write(f"**Descripcion del modelo:** {analisis['descripcion']}")
@@ -1126,7 +1129,7 @@ def _ficha_de_la_orden(orden: dict) -> None:
     cifras[0].metric("Peso esperado", f"{float(orden['peso_esperado_kg']):,.2f} kg")
     cifras[1].metric("Sacos esperados", orden["sacos_esperados"])
     cifras[2].metric("Fecha de la orden", orden["fecha"])
-    st.caption("Datos del ERP (HU-02). Copia local sincronizada el "
+    st.caption("Datos del ERP, actualizados el "
                f"{orden['sincronizado_en'][:19].replace('T', ' ')}.")
 
 
@@ -1318,8 +1321,8 @@ def panel_de_ordenes() -> None:
     cuantos sacos esperados se juzgo cada una.
     """
     st.subheader("Órdenes de despacho")
-    st.caption("Se consultan al ERP por API REST y se guarda una copia local, que "
-               "tambien sirve de respaldo si el ERP no contesta (HU-02).")
+    st.caption("Órdenes obtenidas del ERP. Se conserva una copia local por si el ERP "
+               "no está disponible.")
 
     with st.form("consultar_erp"):
         columnas = st.columns([3, 2, 1])
@@ -1414,8 +1417,8 @@ def panel_de_video() -> None:
 
 def _grabacion_continua() -> None:
     st.subheader("Grabación continua")
-    st.caption("Cada camara se graba en segmentos de 1 minuto en un buffer circular de "
-               "al menos 72 h. Si una camara se cae, queda registrado aqui (HU-05).")
+    st.caption("Las cámaras graban de forma continua y se conservan al menos las "
+               "últimas 72 horas. Las interrupciones se registran aquí.")
     respuesta = pedir("GET", "/salud")
     if respuesta.status_code != 200:
         st.error(detalle_del_error(respuesta))
@@ -1487,10 +1490,9 @@ def _o_guion(valor, signo: bool = False) -> str:
 
 def _clips_y_conteo() -> None:
     st.subheader("Clips y conteo de sacos")
-    st.caption("Por cada evento se recorta el video desde 5 min antes del inicio de la "
-               "carga hasta 2 min despues del cierre y se guarda en el almacen (HU-06). "
-               "YOLO cuenta los sacos que cruzan la linea de carga y la diferencia con la "
-               "orden se guarda en el evento (HU-07).")
+    st.caption("Por cada evento se guarda el video desde 5 minutos antes del inicio de "
+               "la carga hasta 2 minutos después del cierre, y se cuentan los sacos que "
+               "cruzan la línea de carga.")
     respuesta = pedir("GET", "/eventos", params={"limite": 50})
     if respuesta.status_code != 200:
         st.error(detalle_del_error(respuesta))
@@ -1528,14 +1530,13 @@ def _clips_y_conteo() -> None:
     cifras[0].metric("Eventos", len(tabla))
     cifras[1].metric("Con clip", int((tabla["Clip"] == "Vinculado").sum()))
     cifras[2].metric("Sin clip", int((tabla["Clip"] == "Sin clip").sum()),
-                     help="Falto video de mas de la mitad de la ventana: el buffer no "
-                          "cubria esa carga o la camara estaba caida (HU-06, criterio 3).")
+                     help="Faltó video de más de la mitad de la carga: no había "
+                          "grabación de ese periodo o la cámara estaba fuera de servicio.")
     cifras[3].metric("Con conteo", int((tabla["Conteo"] == "Contado").sum()))
 
     st.dataframe(tabla, use_container_width=True, hide_index=True)
-    st.caption("El video de cada evento se reproduce en la pestana Eventos, en el detalle "
-               "del evento. La precision del contador (criterio 2 de HU-07) se mide aparte, "
-               "con el set de validacion: ver yolo/reporte_validacion.txt.")
+    st.caption("El video de cada evento se reproduce en la pestaña Eventos, dentro del "
+               "detalle del evento.")
 
 
 # -------------------------------------------------------------- tolerancias
@@ -1547,7 +1548,7 @@ def panel_de_tolerancias(editable: bool) -> None:
     conseguiria que preguntara por chat cada vez.
     """
     st.subheader("Tolerancias por producto")
-    st.caption("Se aplica la mas restrictiva entre los kg y el porcentaje (RN-01). "
+    st.caption("Se aplica la más restrictiva entre la tolerancia en kg y la porcentual. "
                "Cada cambio queda registrado con usuario y fecha.")
 
     respuesta = pedir("GET", "/configuracion")
@@ -1604,7 +1605,7 @@ def panel_de_tolerancias(editable: bool) -> None:
                     f"**{datos['tolerancia_efectiva_kg']} kg** de diferencia "
                     f"(el porcentaje equivale a {datos['equivalente_del_pct_kg']} kg).")
 
-            st.caption("Canales de alerta por severidad (los edita HU-10):")
+            st.caption("Canales de alerta por severidad:")
             st.json(fila["canales_por_severidad"], expanded=False)
 
             cambios = pedir("GET", f"/configuracion/{fila['producto']}/historial")
