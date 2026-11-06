@@ -5,7 +5,8 @@
 > que, y lo que falta. Esta escrito para que una sesion que empieza de cero
 > pueda continuar sin repetir trabajo ni contradecir lo ya construido.
 >
-> Ultima actualizacion: **01/11/2026**. La base paso a **MySQL 8 en AWS
+> Ultima actualizacion: **05/11/2026**: las camaras simuladas pueden
+> publicar videos reales (seccion 13). Antes, el 01/11/2026, la base paso a **MySQL 8 en AWS
 > Lightsail** y los clips a **Amazon S3** (bucket de Lightsail): la MariaDB y el
 > MinIO del compose quedaron apagados. El entorno corre tambien en una maquina
 > virtual de Azure (seccion 13). **El MVP de 14 historias esta completo** desde
@@ -659,6 +660,12 @@ planta: bascula Modbus, ERP falso, dos camaras publicando por RTSP, mailpit en
 `localhost:8025` para leer los correos, y el stub del proveedor de IA. Redis
 espera a HU-17 (perfil `sprint2`).
 
+**Videos reales sin camaras.** Las camaras simuladas publican en bucle los
+videos que haya en `despacho/api/videos/rampa-01` y `rampa-02` (o en la carpeta
+de `CAMERA_VIDEOS_DIR`); sin videos, las barras de colores de siempre. Todo el
+resto del sistema los trata como una camara de planta. Uso y advertencias en
+`despacho/api/videos/LEEME.md`; los videos no van a Git.
+
 Para volver a la base y al almacen locales, sin nube:
 
 ```bash
@@ -713,6 +720,13 @@ cd ~/quinor && git pull && cd despacho/api && docker compose up -d --build
 ```
 
 - **La IP publica cambia** cada vez que se enciende: mirarla en el portal.
+- **Azure corta en silencio las conexiones TCP ociosas a los 4 minutos.** Una
+  conexion del pool hacia Lightsail que pasaba ese tiempo sin uso quedaba muerta
+  sin saberlo, y la siguiente consulta se colgaba (en el dashboard,
+  `httpx.ReadTimeout` al abrir Usuarios). Desde el 05/11/2026 `api`, `grabador`
+  y `notificaciones` reciclan sus conexiones a los 240 s y PyMySQL tiene limites
+  de tiempo (`RECICLAR_SEGUNDOS` y `LIMITES_DE_CONEXION` en cada `crear_motor`).
+  No subir el reciclado por encima de 4 minutos.
 - Apagada, la maquina no cobra procesador, solo el disco (unos 5 USD al mes).
 - Para mostrarla a alguien sin tunel, abrir el puerto 8501 en Redes **solo para
   su IP**, y borrar la regla despues. No abrir 3306, 8000 ni 8025.
