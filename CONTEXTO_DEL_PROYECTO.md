@@ -660,6 +660,16 @@ planta: bascula Modbus, ERP falso, dos camaras publicando por RTSP, mailpit en
 `localhost:8025` para leer los correos, y el stub del proveedor de IA. Redis
 espera a HU-17 (perfil `sprint2`).
 
+**Dashboard "sala de control" (05/11/2026).** Tema oscuro en
+`despacho/api/.streamlit/config.toml` y estilos en `ESTILO` de
+`dashboard/app.py`. La bandeja muestra un evento por tarjeta, con la barra de
+pasos Pesada, Video, Conteo y Analisis, y un boton Revisar que abre su detalle;
+la tabla sigue en "Ver como tabla". La pesada marca los pasos Orden, Carga y
+Peso, el reloj de carga avanza solo (`st.fragment(run_every=1)`) y el registro
+manual avisa antes de guardar si se abrira un caso. Las pestanas se llaman
+Eventos, Nueva pesada, Ordenes, Camaras, Estado del sistema, Tolerancias, Mis
+tokens y Usuarios: el manual de usuario aun usa los nombres anteriores.
+
 **Videos reales sin camaras.** Las camaras simuladas publican en bucle los
 videos que haya en `despacho/api/videos/rampa-01` y `rampa-02` (o en la carpeta
 de `CAMERA_VIDEOS_DIR`); sin videos, las barras de colores de siempre. Todo el

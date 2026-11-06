@@ -1,0 +1,16 @@
+# Tema "sala de control" del dashboard (rediseno UX/UI del 05/11/2026).
+# Streamlit lee este archivo desde la carpeta donde se lanza: el compose corre
+# `streamlit run dashboard/app.py` desde despacho/api, asi que va aqui.
+[theme]
+base = "dark"
+primaryColor = "#E8B85A"
+backgroundColor = "#0E1512"
+secondaryBackgroundColor = "#16201B"
+textColor = "#EEF2EF"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false
