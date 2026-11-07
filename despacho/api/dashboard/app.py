@@ -118,6 +118,22 @@ def _barra_de_pasos(pasos: list[tuple[str, str]]) -> str:
     return f'<div class="q-pasos">{celdas}</div>'
 
 
+# Estados en los que un supervisor ya tomo el caso: ningun proceso automatico lo
+# vuelve a tocar, asi que lo que falte no esta "en curso", quedo sin hacer.
+ESTADOS_CERRADOS = {"en_revision", "confirmado", "falso_positivo"}
+
+
+def _sin_curso_si_cerrado(pasos: list[tuple[str, str]], estado: str) -> list[tuple[str, str]]:
+    """Un evento clasificado no tiene nada en marcha: lo pendiente se ve apagado.
+
+    Sin esto, los eventos viejos cerrados antes de que hubiera conteo parecian
+    seguir procesando para siempre (visto el 06/11/2026).
+    """
+    if estado not in ESTADOS_CERRADOS:
+        return pasos
+    return [(nombre, "no" if paso == "curso" else paso) for nombre, paso in pasos]
+
+
 def _pasos_de_la_fila(e: dict) -> list[tuple[str, str]]:
     """Los pasos de un evento a partir de su fila de la bandeja."""
     sin_clip = e["estado"] == "sin_clip"
@@ -134,7 +150,9 @@ def _pasos_de_la_fila(e: dict) -> list[tuple[str, str]]:
         analisis = "ok"
     else:
         analisis = "curso" if conteo == "ok" else "no"
-    return [("Pesada", "ok"), ("Video", clip), ("Conteo", conteo), ("Análisis", analisis)]
+    return _sin_curso_si_cerrado(
+        [("Pesada", "ok"), ("Video", clip), ("Conteo", conteo), ("Análisis", analisis)],
+        e["estado"])
 
 
 def _pill_de_severidad(severidad: str | None) -> str:
@@ -337,7 +355,10 @@ def _tarjetas_de_la_bandeja(eventos: list[dict]) -> None:
             izquierda.caption(f"{float(e['diferencia_kg']):+,.0f} kg "
                               f"({float(e['diferencia_pct']):+.1f} %) · {sacos}")
             centro.markdown(_barra_de_pasos(_pasos_de_la_fila(e)), unsafe_allow_html=True)
-            centro.caption(NOMBRE_DEL_ESTADO.get(e["estado"], e["estado"]))
+            incompleto = e["estado"] in ESTADOS_CERRADOS and (
+                e["sacos_contados"] is None or not e["severidad"])
+            centro.caption(NOMBRE_DEL_ESTADO.get(e["estado"], e["estado"])
+                           + (" · cerrado sin análisis completo" if incompleto else ""))
             derecha.button("Ver detalle", key=f"revisar_{e['id']}", use_container_width=True,
                            type="primary" if e["estado"] == "pendiente" else "secondary",
                            on_click=_elegir_evento, args=(e["id"],))
@@ -626,7 +647,9 @@ def _pasos_del_detalle(detalle: dict) -> list[tuple[str, str]]:
         paso = "ok"
     else:
         paso = "curso" if contado else "no"
-    return [("Pesada", "ok"), ("Video", clip), ("Conteo", conteo), ("Análisis", paso)]
+    return _sin_curso_si_cerrado(
+        [("Pesada", "ok"), ("Video", clip), ("Conteo", conteo), ("Análisis", paso)],
+        detalle["estado"])
 
 
 def _cifras_del_detalle(detalle: dict) -> None:
