@@ -858,11 +858,6 @@ def _analisis_del_detalle(detalle: dict) -> None:
             f"y la regla dice **{analisis['severidad'].capitalize()}**. Manda la "
             f"regla. Estas discrepancias son las que se revisan cada semana.")
 
-    st.caption(
-        f"Modelo {analisis['modelo'] or '?'} ({analisis['proveedor'] or '?'}), "
-        f"confianza {(analisis['confianza'] or 0):.0%}, "
-        f"{analisis['intentos'] or 1} intento(s). Es una ayuda para priorizar, "
-        f"no una conclusion: la decision es del supervisor.")
 
 
 def _personas_del_detalle(detalle: dict) -> None:
