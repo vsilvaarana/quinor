@@ -60,8 +60,8 @@ NOMBRE_DE_LA_DECISION = {
     "pendiente": "Devolver a pendiente",
 }
 
-# Rediseno UX/UI del 05/11/2026, "sala de control": el tema oscuro vive en
-# .streamlit/config.toml; aqui solo lo que el tema no cubre (tipografia de
+# Rediseno UX/UI del 05/11/2026; desde el 13/11/2026 en tema claro. El tema vive
+# en .streamlit/config.toml; aqui solo lo que el tema no cubre (tipografia de
 # titulos, tarjetas, la barra de pasos). Si las fuentes no cargan (sin internet)
 # se usa la del sistema y todo sigue legible.
 ESTILO = """
@@ -70,37 +70,37 @@ ESTILO = """
 html, body, [class*="css"], .stMarkdown, .stText, button, input, textarea {font-family: Inter, system-ui, sans-serif;}
 h1, h2, h3, h4, [data-testid="stMetricValue"] {font-family: 'Space Grotesk', Inter, sans-serif !important; letter-spacing: -.01em;}
 [data-testid="stMetricValue"] {font-weight: 500;}
-[data-testid="stMetricLabel"] p {color: #A7B3AC;}
+[data-testid="stMetricLabel"] p {color: #5F6B64;}
 .block-container {padding-top: 2.5rem; max-width: 1280px;}
 #MainMenu, footer, [data-testid="stDecoration"] {visibility: hidden;}
-.stTabs [data-baseweb="tab-list"] {gap: 4px; border-bottom: 1px solid #22302A;}
+.stTabs [data-baseweb="tab-list"] {gap: 4px; border-bottom: 1px solid #D9D4C7;}
 .stTabs [data-baseweb="tab"] {height: 48px; padding: 0 16px; font-size: 15px;}
 .stButton button, .stFormSubmitButton button, .stDownloadButton button {border-radius: 12px; min-height: 44px; font-weight: 500;}
 [data-testid="stVerticalBlockBorderWrapper"] {border-radius: 16px;}
-[data-testid="stExpander"] details {border-radius: 16px; border-color: #26332C;}
+[data-testid="stExpander"] details {border-radius: 16px; border-color: #D9D4C7;}
 .q-saludo {font: 500 40px/1.12 'Space Grotesk', Inter, sans-serif; letter-spacing: -.02em; margin: 6px 0 4px;}
-.q-tenue {color: #A7B3AC;}
-.q-oro {color: #E8B85A;}
-.q-vivo {display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: #A7B3AC;}
-.q-vivo i {width: 8px; height: 8px; border-radius: 50%; background: #7FD3A6; animation: q-pulso 2s infinite;}
-@keyframes q-pulso {0% {box-shadow: 0 0 0 0 rgba(127,211,166,.55);} 70% {box-shadow: 0 0 0 10px rgba(127,211,166,0);} 100% {box-shadow: 0 0 0 0 rgba(127,211,166,0);}}
+.q-tenue {color: #5F6B64;}
+.q-oro {color: #A8741A;}
+.q-vivo {display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: #5F6B64;}
+.q-vivo i {width: 8px; height: 8px; border-radius: 50%; background: #2E8B57; animation: q-pulso 2s infinite;}
+@keyframes q-pulso {0% {box-shadow: 0 0 0 0 rgba(46,139,87,.55);} 70% {box-shadow: 0 0 0 10px rgba(46,139,87,0);} 100% {box-shadow: 0 0 0 0 rgba(46,139,87,0);}}
 .q-pasos {display: flex; gap: 6px; margin: 4px 0 2px;}
 .q-paso {flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0;}
 .q-paso b {height: 5px; border-radius: 3px; display: block;}
-.q-paso span {font-size: 12px; color: #A7B3AC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-.q-ok b {background: #7FD3A6;} .q-curso b {background: repeating-linear-gradient(90deg,#8FB4E8 0 6px,#2F4565 6px 12px); background-size: 24px 5px; animation: q-avanza 1s linear infinite;}
-.q-fallo b {background: transparent; box-shadow: inset 0 0 0 2px #E8B85A;} .q-no b {background: #26332C;}
+.q-paso span {font-size: 12px; color: #5F6B64; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.q-ok b {background: #2E8B57;} .q-curso b {background: repeating-linear-gradient(90deg,#3B6FB6 0 6px,#C9D8EE 6px 12px); background-size: 24px 5px; animation: q-avanza 1s linear infinite;}
+.q-fallo b {background: transparent; box-shadow: inset 0 0 0 2px #A8741A;} .q-no b {background: #D9D4C7;}
 @keyframes q-avanza {from {background-position: 0 0;} to {background-position: 24px 0;}}
 .q-pill {display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 5px 10px; border-radius: 8px;}
-.q-alta {background: #3A1D16; color: #FFB4A1;} .q-media {background: #3A2A12; color: #F3D08A;}
-.q-baja {background: #1F2B36; color: #B9CDE6;} .q-sin {background: #1C2822; color: #A7B3AC;}
+.q-alta {background: #FBE3DC; color: #9B2C14;} .q-media {background: #FCEFD6; color: #8A5A00;}
+.q-baja {background: #E3ECF7; color: #2F5487;} .q-sin {background: #ECEAE3; color: #5F6B64;}
 .q-chips {display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px;}
-.q-chip {font-size: 14px; padding: 7px 12px; border-radius: 999px; border: 1px solid #2E3D35; color: #C9D3CD;}
-.q-chip strong {color: #EEF2EF;}
+.q-chip {font-size: 14px; padding: 7px 12px; border-radius: 999px; border: 1px solid #CFC9BA; color: #3A4640;}
+.q-chip strong {color: #1E2A23;}
 .q-grande {font: 500 30px 'Space Grotesk', Inter, sans-serif; line-height: 1.1;}
 .q-pasos-pesada {display: flex; gap: 10px; margin: 6px 0 18px;}
-.q-pp {flex: 1; padding: 12px 14px; border-radius: 12px; border: 1px solid #26332C; font-size: 14px; color: #A7B3AC;}
-.q-pp.hecho {border-color: #2F5A45; color: #7FD3A6;} .q-pp.actual {border-color: #E8B85A; color: #EEF2EF;}
+.q-pp {flex: 1; padding: 12px 14px; border-radius: 12px; border: 1px solid #D9D4C7; font-size: 14px; color: #5F6B64;}
+.q-pp.hecho {border-color: #8CC5A5; color: #2E8B57;} .q-pp.actual {border-color: #A8741A; color: #1E2A23;}
 .q-reloj {font: 400 64px/1 'Space Grotesk', Inter, sans-serif; letter-spacing: -.03em; font-variant-numeric: tabular-nums;}
 </style>
 """
