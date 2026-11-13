@@ -166,6 +166,8 @@ def create_app(
             dispositivo=ajustes.dispositivo,
             linea=list(ajustes.linea),
             zona=list(ajustes.zona),
+            modo_conteo=ajustes.modo_conteo,
+            zona_pallets=list(ajustes.zona_pallets) if ajustes.por_pallets else None,
             mensaje=None if cargado else
             f"Sin modelo en {ajustes.ruta_pesos}: el analisis respondera 503",
         )
@@ -205,6 +207,9 @@ def create_app(
             sacos_salientes=resultado.sacos_salientes,
             sacos_esperados=cuerpo.sacos_esperados,
             diferencia_sacos=diferencia,
+            modo_conteo=resultado.modo_conteo,
+            pallets_contados=resultado.pallets_contados,
+            sacos_por_pallet=resultado.sacos_por_pallet,
             personas_detectadas=resultado.personas_detectadas,
             fotogramas_procesados=resultado.fotogramas_procesados,
             duracion_del_clip_s=resultado.duracion_del_clip_s,

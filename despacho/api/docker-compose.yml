@@ -291,7 +291,7 @@ services:
     environment:
       # Los pesos llegan por volumen: cambiar de modelo no reconstruye la imagen,
       # que es lo que HU-19 va a necesitar al reentrenar con la rampa real.
-      YOLO_WEIGHTS: /modelos/sacos.pt
+      YOLO_WEIGHTS: ${YOLO_WEIGHTS:-/modelos/sacos.pt}
       YOLO_DEVICE: ${YOLO_DEVICE:-cpu}
       # Fotogramas que se saltan entre inferencias (ver .env.example). Antes no
       # llegaba al contenedor y el valor del .env no tenia efecto.
@@ -303,6 +303,14 @@ services:
       ZONA_CARGA: ${ZONA_CARGA:-0.0,0.0,1.0,1.0}
       PERSONAS_HABITUALES: ${PERSONAS_HABITUALES:-3}
       PERMANENCIA_MAX_SEGUNDOS: ${PERMANENCIA_MAX_SEGUNDOS:-600}
+      # Conteo por pallets (ver .env.example). Con el modo "linea" no se usan.
+      YOLO_MODO_CONTEO: ${YOLO_MODO_CONTEO:-linea}
+      SACOS_POR_PALLET: ${SACOS_POR_PALLET:-40}
+      ZONA_PALLETS: ${ZONA_PALLETS:-0.0,0.0,1.0,1.0}
+      PALLET_PERMANENCIA_SEGUNDOS: ${PALLET_PERMANENCIA_SEGUNDOS:-2}
+      PALLET_IGNORAR_INICIO_SEGUNDOS: ${PALLET_IGNORAR_INICIO_SEGUNDOS:-3}
+      PALLET_RADIO: ${PALLET_RADIO:-0.06}
+      PALLET_MEMORIA_SEGUNDOS: ${PALLET_MEMORIA_SEGUNDOS:-6}
       # Clave compartida con el grabador. El servicio vive en la red interna del
       # apartado 8 y solo lo llama el grabador.
       YOLO_API_KEY: ${YOLO_API_KEY:-}

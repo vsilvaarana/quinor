@@ -5,7 +5,9 @@
 > que, y lo que falta. Esta escrito para que una sesion que empieza de cero
 > pueda continuar sin repetir trabajo ni contradecir lo ya construido.
 >
-> Ultima actualizacion: **05/11/2026**: las camaras simuladas pueden
+> Ultima actualizacion: **13/11/2026**: el servicio YOLO puede contar
+> **pallets** en lugar de sacos sueltos (`YOLO_MODO_CONTEO=pallets`, seccion 12).
+> El 05/11/2026 las camaras simuladas pasaron a poder
 > publicar videos reales (seccion 13). Antes, el 01/11/2026, la base paso a **MySQL 8 en AWS
 > Lightsail** y los clips a **Amazon S3** (bucket de Lightsail): la MariaDB y el
 > MinIO del compose quedaron apagados. El entorno corre tambien en una maquina
@@ -492,13 +494,13 @@ suites corren tambien contra MariaDB, y el codigo debe servir en los dos.
 
 ---
 
-## 10. Pruebas: 1350 en total, 100 % de cobertura
+## 10. Pruebas: 1378 en total, 100 % de cobertura
 
 | Servicio | Pruebas | Cobertura | Contra que corre |
 |---|---|---|---|
 | `api` | 520 | 100 % | MySQL y MariaDB reales, Modbus en proceso, ERP con respx, firma de MinIO sin red |
 | `grabador` | 279 | 100 % | MySQL, ffmpeg, RTSP mediamtx, S3, tres servicios HTTP falsos |
-| `yolo` | 222 | 100 % | Modelo entrenado real, video real generado |
+| `yolo` | 250 | 100 % | Modelo entrenado real, video real generado |
 | `vlm` | 185 | 100 % | Stub que habla el dialecto del proveedor por HTTP |
 | `notificaciones` | 144 | 100 % | MySQL y un servidor SMTP real (aiosmtpd) |
 
@@ -602,6 +604,19 @@ para que solo cambie quien llama.
 **HU-19, reentrenamiento.** `yolo/sim/entrenar.py` y `validar.py` ya existen. La
 tabla `modelo_version` tambien. Falta el dataset de planta: lo que hay es
 sintetico, y el reporte de validacion lo dice con todas las letras.
+
+**Conteo por pallets (13/11/2026), adelanto de HU-19.** Con el primer video real
+de la rampa (camara alta y lejana) los sacos sueltos no se detectan: ocupan unos
+pocos pixeles. Se entreno en Google Colab un modelo `pallet` + `person`
+(`modelos/pallets.pt`, etiquetado automatico con YOLO-World) y el servicio YOLO
+gano un segundo modo, `YOLO_MODO_CONTEO=pallets`: cuenta los pallets que llegan
+a `ZONA_PALLETS` y estima sacos = pallets x 40. El contrato no cambia para el
+grabador (`sacos_contados` y `diferencia_sacos` siguen ahi) y agrega
+`modo_conteo`, `pallets_contados` y `sacos_por_pallet`. Detalle y reglas en
+`despacho/yolo/README.md`. Pendiente: calibrar `ZONA_PALLETS` con un clip real,
+medir la precision contra un conteo manual, y decidir si el dashboard muestra
+"pallets" ademas de sacos. Las etiquetas del modelo son automaticas: para
+reportar metricas en la tesis hay que corregirlas a mano y reentrenar.
 
 ### Pendientes que dependen de QUINOR, no del desarrollo
 

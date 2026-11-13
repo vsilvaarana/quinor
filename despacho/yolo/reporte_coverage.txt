@@ -1,31 +1,35 @@
 Reporte de cobertura - Servicio YOLO QUINOR (Alternativa 1)
-Generado: 2026-09-17
+Generado: 2026-11-13 (antes: 2026-09-17, 222 pruebas)
 Comando:  pytest --cov=app --cov-report=term-missing --cov-fail-under=90
 Alcance:  HU-07 conteo de los sacos que cruzan la linea de carga
           HU-08 seguimiento de las personas en la zona de carga
           HU-09 extraccion de los fotogramas clave del clip
+          Conteo por pallets (YOLO_MODO_CONTEO=pallets), tests/test_pallets.py
 Entorno:  modelo YOLO11n entrenado de verdad (modelos/sacos.pt), video real
           generado por sim/rampa_sim.py, y el endpoint contra TestClient.
           tests/test_modelo.py carga los pesos y analiza video; se salta cuando
           no estan entrenados.
+          Con ultralytics 8.3.155, la version fijada en requirements.txt: con
+          8.4 falla test_el_salto_de_fotogramas_alto_se_delata, porque el
+          rastreador nuevo si sigue los sacos con salto 2.
 
----------- coverage: platform linux, python 3.11.15-final-0 ----------
-Name               Stmts   Miss  Cover   Missing
-------------------------------------------------
+---------- coverage: platform linux, python 3.13 ----------
+Name                Stmts   Miss  Cover   Missing
+-------------------------------------------------
 app/__init__.py         0      0   100%
-app/analisis.py       116      0   100%
+app/analisis.py       122      0   100%
 app/anomalias.py       31      0   100%
-app/config.py          83      0   100%
-app/conteo.py          78      0   100%
+app/config.py         103      0   100%
+app/conteo.py         139      0   100%
 app/fotogramas.py      72      0   100%
 app/main.py            80      0   100%
 app/personas.py        80      0   100%
-app/schemas.py         57      0   100%
-------------------------------------------------
-TOTAL                 597      0   100%
-
+app/schemas.py         62      0   100%
+-------------------------------------------------
+TOTAL                 689      0   100%
 Required test coverage of 90% reached. Total coverage: 100.00%
-222 passed in 85.95s (0:01:25)
+250 passed, 1 warning in 86.07s (0:01:26)
+
 
 
 Criterio 2 de HU-07 (precision >= 95 %)

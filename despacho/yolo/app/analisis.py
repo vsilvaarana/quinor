@@ -29,7 +29,7 @@ import time
 import structlog
 
 from app.anomalias import Anomalia, evaluar
-from app.conteo import ContadorDeLinea, Deteccion, Punto
+from app.conteo import ContadorDeLinea, ContadorDePallets, Deteccion, Punto
 from app.config import Ajustes
 from app.fotogramas import (CENTRO_DEL_CLIP, FotogramaClave, Momento,
                             SelectorDeFotogramas, momentos_del_fotograma)
@@ -70,6 +70,11 @@ class Resultado:
     # Fotogramas en los que hubo detecciones pero ninguna llego a tener
     # identificador de seguimiento. Ver `seguimiento_perdido`.
     fotogramas_sin_seguimiento: int = 0
+    # Solo con YOLO_MODO_CONTEO=pallets. Entonces sacos_contados es una
+    # estimacion: pallets por sacos de un pallet completo.
+    modo_conteo: str = "linea"
+    pallets_contados: int | None = None
+    sacos_por_pallet: int | None = None
 
     @property
     def mas_rapido_que_el_video(self) -> bool:
@@ -183,9 +188,20 @@ def analizar(ajustes: Ajustes, clip: pathlib.Path, modelo=None) -> Resultado:
     """
     video = _abrir(clip)
     modelo = modelo if modelo is not None else _cargar_modelo(ajustes)
-    contador = ContadorDeLinea(
-        linea=ajustes.linea, clase=ajustes.clase_saco,
-        invertir=ajustes.invertir_sentido, memoria=ajustes.memoria_de_seguimiento)
+    if ajustes.por_pallets:
+        contador = ContadorDePallets(
+            zona=ajustes.zona_pallets, clase=ajustes.clase_pallet, fps=video.fps,
+            sacos_por_pallet=ajustes.sacos_por_pallet,
+            permanencia_s=ajustes.permanencia_pallet_s,
+            ignorar_inicio_s=ajustes.ignorar_inicio_s,
+            radio=ajustes.radio_pallet, memoria_s=ajustes.memoria_pallet_s)
+    else:
+        contador = ContadorDeLinea(
+            linea=ajustes.linea, clase=ajustes.clase_saco,
+            invertir=ajustes.invertir_sentido, memoria=ajustes.memoria_de_seguimiento)
+    # Lo que se cuenta: sacos con la linea, pallets por zona. `seguimiento_perdido`
+    # mira las detecciones de esa clase, sea cual sea.
+    clase_contada = contador.clase
 
     # HU-08 va en la misma pasada que HU-07: el video ya esta abierto y las
     # personas ya vienen detectadas y seguidas. Una segunda pasada doblaria el
@@ -228,7 +244,7 @@ def analizar(ajustes: Ajustes, clip: pathlib.Path, modelo=None) -> Resultado:
         nombres = getattr(resultado, "names", {}) or {}
         sin_seguimiento += 1 if _sin_seguimiento(resultado) else 0
         detecciones = _detecciones_del_fotograma(resultado, nombres)
-        detecciones_de_saco += sum(1 for d in detecciones if d.clase == ajustes.clase_saco)
+        detecciones_de_saco += sum(1 for d in detecciones if d.clase == clase_contada)
         # El indice se multiplica por el salto para que la memoria del contador
         # se mida en fotogramas de video y no en fotogramas mirados.
         del_video = indice * ajustes.salto_de_fotogramas
@@ -237,7 +253,8 @@ def analizar(ajustes: Ajustes, clip: pathlib.Path, modelo=None) -> Resultado:
 
         imagen = getattr(resultado, "orig_img", None)
         selector.considerar(del_video, imagen, momentos_del_fotograma(
-            cruces, en_zona, pico_de_personas, not hubo_cruce))
+            cruces, en_zona, pico_de_personas, not hubo_cruce,
+            por_pallets=ajustes.por_pallets))
         pico_de_personas = max(pico_de_personas, en_zona)
         hubo_cruce = hubo_cruce or bool(cruces)
         ultimo_indice = del_video
@@ -272,6 +289,9 @@ def analizar(ajustes: Ajustes, clip: pathlib.Path, modelo=None) -> Resultado:
         personas=quienes,
         anomalia=anomalia,
         fotogramas_clave=claves,
+        modo_conteo=ajustes.modo_conteo,
+        pallets_contados=contador.pallets if ajustes.por_pallets else None,
+        sacos_por_pallet=ajustes.sacos_por_pallet if ajustes.por_pallets else None,
     )
     if resultado.seguimiento_perdido:
         log.error(
@@ -283,6 +303,7 @@ def analizar(ajustes: Ajustes, clip: pathlib.Path, modelo=None) -> Resultado:
                     "fotograma mirado y el siguiente y el rastreador lo pierde. "
                     "Bajar YOLO_FRAME_STRIDE y repetir la validacion.")
     log.info("clip_analizado", clip=clip.name, sacos=resultado.sacos_contados,
+             modo=resultado.modo_conteo, pallets=resultado.pallets_contados,
              entrantes=resultado.sacos_entrantes, salientes=resultado.sacos_salientes,
              personas=resultado.personas_detectadas,
              maximo_simultaneo=quienes.maximo_simultaneo,

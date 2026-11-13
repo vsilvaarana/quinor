@@ -153,12 +153,16 @@ class SelectorDeFotogramas:
 
 
 def momentos_del_fotograma(cruces, personas_en_zona: int, pico_previo: int,
-                           es_primer_cruce: bool) -> list[Momento]:
+                           es_primer_cruce: bool, por_pallets: bool = False) -> list[Momento]:
     """Traduce lo que paso en un fotograma a motivos para guardarlo.
 
     `cruces` son los del contador de HU-07 y `personas_en_zona` lo que devolvio
     el seguidor de HU-08 en ese mismo fotograma: los dos salen de la pasada que
     ya se estaba haciendo, sin mirar el video una segunda vez.
+
+    Con `por_pallets` los "cruces" son llegadas de pallets a la zona de carga.
+    Los motivos no cambian, porque son codigos estables que el dashboard ya
+    traduce; cambia la frase, que es la que lee el supervisor.
     """
     momentos = []
 
@@ -174,12 +178,14 @@ def momentos_del_fotograma(cruces, personas_en_zona: int, pico_previo: int,
     if entrantes and es_primer_cruce:
         momentos.append(Momento(
             motivo=PRIMER_SACO,
-            detalle="Primer saco que cruza la linea de carga.",
+            detalle=("Primer pallet que llega a la zona de carga." if por_pallets
+                     else "Primer saco que cruza la linea de carga."),
             magnitud=1.0))
     if entrantes:
         momentos.append(Momento(
             motivo=ULTIMO_SACO,
-            detalle="Ultimo saco que cruza la linea de carga.",
+            detalle=("Ultimo pallet que llega a la zona de carga." if por_pallets
+                     else "Ultimo saco que cruza la linea de carga."),
             magnitud=float(len(entrantes))))
 
     if personas_en_zona > 0 and personas_en_zona >= pico_previo:
