@@ -21,7 +21,7 @@
 #   rtsp-server  servidor RTSP que hace de camara mientras no haya camaras
 #   camara-sim-01/02  camaras simuladas publicando contra el servidor RTSP
 # =============================================================================
-name: quinor-alt1
+name: quinor
 
 x-app-build: &app-build
   build:
