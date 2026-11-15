@@ -28,6 +28,35 @@ class CapturarPesada(BaseModel):
     motivo_manual: str | None = Field(default=None, max_length=200)
 
 
+class PedirLecturaPrevia(BaseModel):
+    """Para que orden se quiere saber lo que marca la bascula. Fase 5 de UX."""
+
+    numero_orden: str = Field(min_length=1, max_length=40, examples=["ORD-2026-0001"])
+    bascula_id: str | None = Field(default=None, max_length=20)
+
+
+class LecturaPrevia(BaseModel):
+    """Lo que marca la bascula ahora y que pasaria al registrar. No es una pesada.
+
+    Los cuatro ultimos campos van en null cuando no se pueden afirmar: con la
+    bascula en movimiento el peso no es un dato, y sin tolerancia configurada
+    no se sabe si habria evento. Null no es "no".
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    numero_orden: str
+    bascula_id: str
+    peso_kg: Decimal
+    estable: bool
+    leido_en: dt.datetime
+    peso_esperado_kg: Decimal
+    diferencia_kg: Decimal | None = None
+    diferencia_pct: Decimal | None = None
+    tolerancia_kg: Decimal | None = None
+    generaria_evento: bool | None = None
+
+
 class PesadaLeida(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

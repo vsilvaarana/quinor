@@ -1,6 +1,7 @@
 """Tests de cada metodo del API, incluyendo autenticacion y errores. HU-01."""
 
 import datetime as dt
+import json
 from decimal import Decimal
 
 import pytest
@@ -401,6 +402,186 @@ def test_crear_pesada_con_peso_en_movimiento(crear_cliente, bascula_inestable, o
     assert resp.status_code == 409
     assert "movimiento" in resp.json()["detail"]
     assert sesion.execute(text("SELECT COUNT(*) FROM pesada")).scalar_one() == 0
+
+
+# ---------- POST /pesadas/lectura-previa (fase 5 de la critica de UX) ----------
+# La bascula de prueba marca 19 850 kg y la orden espera 20 000: faltan 150 kg.
+# La tolerancia sembrada son 50 kg o el 0,5 % (100 kg), y manda la menor: 50.
+
+PREVIA = "/pesadas/lectura-previa"
+
+
+def _lecturas_previas(sesion) -> list:
+    return sesion.execute(text(
+        "SELECT usuario_id, entidad, entidad_id, detalle FROM auditoria "
+        "WHERE accion = 'lectura_previa' ORDER BY id")).all()
+
+
+def test_la_lectura_previa_dice_que_pasaria_al_registrar(client, orden):
+    resp = client.post(PREVIA, json=PESADA)
+
+    assert resp.status_code == 200, resp.text
+    cuerpo = resp.json()
+    assert cuerpo["numero_orden"] == "ORD-2026-0001"
+    assert cuerpo["bascula_id"] == "BASCULA-01"
+    assert cuerpo["estable"] is True
+    assert cuerpo["leido_en"]
+    assert Decimal(cuerpo["peso_kg"]) == PESO_FIJO
+    assert Decimal(cuerpo["peso_esperado_kg"]) == Decimal("20000.00")
+    assert Decimal(cuerpo["diferencia_kg"]) == Decimal("-150.00")
+    assert Decimal(cuerpo["diferencia_pct"]) == Decimal("-0.75")
+    assert Decimal(cuerpo["tolerancia_kg"]) == TOLERANCIA_KG
+    assert cuerpo["generaria_evento"] is True
+
+
+def test_la_lectura_previa_no_registra_pesada_ni_evento(client, orden, sesion):
+    """Es una pregunta, no una pesada. Si creara filas, mirar dos veces el peso
+    dejaria dos pesadas de la misma carga."""
+    assert client.post(PREVIA, json=PESADA).status_code == 200
+
+    assert sesion.execute(text("SELECT COUNT(*) FROM pesada")).scalar_one() == 0
+    assert sesion.execute(text("SELECT COUNT(*) FROM evento")).scalar_one() == 0
+
+
+def test_cada_lectura_previa_queda_en_auditoria_con_su_usuario(
+        client_supervisor, orden, sesion):
+    """La razon de ser del rastro: quien ve un faltante antes de que exista la
+    pesada puede no registrarla. Que lo miro, cuando y cuanto marcaba tiene que
+    quedar escrito, y a nombre de quien lo pidio, no del sistema."""
+    client_supervisor.post(PREVIA, json=PESADA)
+    client_supervisor.post(PREVIA, json=PESADA)
+
+    filas = _lecturas_previas(sesion)
+    assert len(filas) == 2
+    supervisor = sesion.execute(text(
+        "SELECT id FROM usuario WHERE correo = 'supervisor@quinor.local'")).scalar_one()
+    for fila in filas:
+        assert fila.usuario_id == supervisor
+        assert (fila.entidad, fila.entidad_id) == ("orden_despacho", orden.id)
+        detalle = json.loads(fila.detalle)
+        assert detalle["numero_orden"] == "ORD-2026-0001"
+        assert detalle["bascula_id"] == "BASCULA-01"
+        assert Decimal(detalle["peso_kg"]) == PESO_FIJO
+        assert Decimal(detalle["diferencia_kg"]) == Decimal("-150.00")
+        assert Decimal(detalle["tolerancia_kg"]) == TOLERANCIA_KG
+        assert detalle["estable"] is True
+        assert detalle["generaria_evento"] is True
+
+
+def test_consulta_no_puede_pedir_la_lectura_previa(client_consulta, orden, sesion):
+    """Quien no puede pesar no tiene por que saber cuanto falta en un camion."""
+    resp = client_consulta.post(PREVIA, json=PESADA)
+
+    assert resp.status_code == 403
+    assert _lecturas_previas(sesion) == []
+
+
+def test_la_lectura_previa_dentro_de_tolerancia_no_anuncia_evento(client, orden):
+    client.patch(f"/configuracion/{PRODUCTO}",
+                 json={"tolerancia_kg": 200, "tolerancia_pct": 5})
+
+    cuerpo = client.post(PREVIA, json=PESADA).json()
+
+    assert Decimal(cuerpo["tolerancia_kg"]) == Decimal("200.00")
+    assert cuerpo["generaria_evento"] is False
+
+
+def test_la_lectura_previa_sin_tolerancia_no_dice_que_no_habra_evento(
+        client, orden, sesion):
+    """Convencion 7. Sin tolerancia configurada no se puede comparar, y un
+    `false` aqui se leeria en pantalla como "carga limpia"."""
+    sesion.execute(text("DELETE FROM configuracion WHERE producto = :p"),
+                   {"p": PRODUCTO})
+    sesion.commit()
+
+    cuerpo = client.post(PREVIA, json=PESADA).json()
+
+    assert Decimal(cuerpo["diferencia_kg"]) == Decimal("-150.00")
+    assert cuerpo["tolerancia_kg"] is None
+    assert cuerpo["generaria_evento"] is None
+    assert json.loads(_lecturas_previas(sesion)[0].detalle)["generaria_evento"] is None
+
+
+def test_la_lectura_previa_con_peso_en_movimiento_no_da_diferencia(
+        crear_cliente, bascula_inestable, orden, sesion):
+    """Mientras la bascula oscila el numero no es un dato. Se responde 200, para
+    que la pantalla pueda decir "espere", pero sin diferencia ni veredicto. Y se
+    anota igual: tambien es una mirada al peso."""
+    cliente = crear_cliente(scale_port=bascula_inestable)
+
+    resp = cliente.post(PREVIA, json=PESADA)
+
+    assert resp.status_code == 200
+    cuerpo = resp.json()
+    assert cuerpo["estable"] is False
+    assert cuerpo["diferencia_kg"] is None
+    assert cuerpo["diferencia_pct"] is None
+    assert cuerpo["tolerancia_kg"] is None
+    assert cuerpo["generaria_evento"] is None
+    detalle = json.loads(_lecturas_previas(sesion)[0].detalle)
+    assert detalle["estable"] is False
+    assert detalle["diferencia_kg"] is None
+
+
+def test_la_lectura_previa_con_la_bascula_caida(crear_cliente, orden, sesion):
+    """Igual que al registrar: 503 y el fallo queda en salud_componente. No hay
+    fila de auditoria porque no hubo lectura que anotar."""
+    cliente = crear_cliente(scale_port=SIN_NADIE)
+
+    resp = cliente.post(PREVIA, json=PESADA)
+
+    assert resp.status_code == 503
+    assert "no respondio" in resp.json()["detail"]
+    estado = sesion.execute(
+        text("SELECT estado FROM salud_componente WHERE componente = 'bascula'")
+    ).scalar_one()
+    assert estado == "error"
+    assert _lecturas_previas(sesion) == []
+
+
+def test_la_lectura_previa_de_una_orden_desconocida(client, erp_sin_orden, sesion):
+    resp = client.post(PREVIA, json={"numero_orden": "ORD-NO-EXISTE"})
+
+    assert resp.status_code == 404
+    assert _lecturas_previas(sesion) == []
+
+
+def test_la_lectura_previa_exige_la_orden(client):
+    assert client.post(PREVIA, json={}).status_code == 422
+
+
+def test_la_lectura_previa_admite_otra_bascula(client, orden, sesion):
+    cuerpo = client.post(PREVIA, json={**PESADA, "bascula_id": "BASCULA-02"}).json()
+
+    assert cuerpo["bascula_id"] == "BASCULA-02"
+    assert json.loads(_lecturas_previas(sesion)[0].detalle)["bascula_id"] == "BASCULA-02"
+
+
+def test_la_lectura_previa_no_consume_la_marca_de_carga(client, orden, erp_sano):
+    """HU-06. La marca de inicio es de la pesada que cierra la carga. Si la
+    lectura previa la consumiera, el clip del evento perderia su ventana."""
+    marcado = client.post("/cargas/ORD-2026-0001/inicio").json()
+
+    client.post(PREVIA, json=PESADA)
+
+    assert client.get("/cargas").json()[0]["consumida_en"] is None
+    pesada = client.post("/pesadas", json=PESADA).json()
+    assert pesada["evento"]["inicio_carga"][:19] == marcado["inicio"][:19]
+
+
+def test_registrar_despues_de_la_previa_vuelve_a_leer_la_bascula(client, orden, sesion):
+    """El peso que se guarda nunca viaja desde el navegador: la pesada es una
+    lectura propia, con su origen y su fila de auditoria aparte."""
+    client.post(PREVIA, json=PESADA)
+
+    pesada = client.post("/pesadas", json=PESADA).json()
+
+    assert pesada["origen"] == "bascula"
+    assert Decimal(pesada["peso_real_kg"]) == PESO_FIJO
+    acciones = sesion.execute(text(
+        "SELECT accion FROM auditoria WHERE accion IN "
+        "('lectura_previa', 'registrar_pesada') ORDER BY id")).scalars().all()
+    assert acciones == ["lectura_previa", "registrar_pesada"]
 
 
 # ---------- GET /pesadas ----------

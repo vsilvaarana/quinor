@@ -63,8 +63,8 @@ from app.schemas import (AbrirCarga, AnalisisLeido, AvisoDelEvento,
                          DetalleDeEvento, EditarTolerancia, EnlaceLeido,
                          EventoClasificado, EventoLeido, FilaDeBandeja,
                          FiltrosAplicados,
-                         FotogramaLeido,
-                         NotificacionLeida, OrdenLeida,
+                         FotogramaLeido, LecturaPrevia,
+                         NotificacionLeida, OrdenLeida, PedirLecturaPrevia,
                          PersonaEnZonaLeida, PersonasLeidas, PesosLeidos,
                          PesadaLeida, PesadaRegistrada, PresenciaLeida,
                          RespuestaSalud, SacosLeidos, SolicitarToken,
@@ -389,6 +389,31 @@ def create_app(
             evaluada=pesada.evaluada,
             motivo_sin_evaluar=pesada.motivo_sin_evaluar,
         )
+
+    @app.post("/pesadas/lectura-previa", response_model=LecturaPrevia,
+              tags=["pesadas"],
+              summary="Lee la bascula sin registrar la pesada; queda en auditoria")
+    async def leer_antes_de_registrar(
+        cuerpo: PedirLecturaPrevia,
+        actor: Usuario = Depends(requiere_escritura),
+        sesion: Session = Depends(obtener_sesion),
+    ) -> LecturaPrevia:
+        """Dice si la pesada abriria un evento antes de registrarla.
+
+        Es POST y no GET porque escribe: cada lectura previa deja una fila en
+        auditoria. Y pide el mismo rol que registrar la pesada, porque quien no
+        puede pesar no tiene por que saber cuanto falta en un camion.
+        """
+        try:
+            lectura = await servicio_pesadas.lectura_previa(
+                sesion, ajustes, numero_orden=cuerpo.numero_orden,
+                bascula_id=cuerpo.bascula_id, usuario_id=actor.id)
+        except servicio_ordenes.OrdenNoDisponible as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except servicio_pesadas.BasculaNoResponde as exc:
+            # Igual que al registrar: el fallo ya quedo en GET /salud.
+            raise HTTPException(503, str(exc)) from exc
+        return LecturaPrevia.model_validate(lectura)
 
     @app.get("/pesadas", response_model=list[PesadaLeida], dependencies=autenticado,
              tags=["pesadas"], summary="Lista las pesadas registradas")

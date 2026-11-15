@@ -230,6 +230,44 @@ pretende evitar.
 | 409 | La bascula sigue en movimiento |
 | 503 | La bascula no respondio. El fallo ya esta en `salud_componente` |
 
+### Lectura previa: `POST /pesadas/lectura-previa` (15/11/2026)
+
+Lee la bascula y devuelve el peso, la diferencia contra la orden, la tolerancia
+y si la pesada generaria un evento, **sin registrar nada**. La usa la pantalla
+de Registro de pesada para avisar antes de confirmar. No es una historia del
+backlog: salio de la fase 5 de la critica de UX.
+
+```bash
+curl -X POST localhost:8000/pesadas/lectura-previa -H "X-API-Key: $TOKEN" \
+     -H "Content-Type: application/json" -d '{"numero_orden": "ORD-2026-0001"}'
+```
+
+Tres cosas que no son evidentes:
+
+- **Cada lectura deja una fila en `auditoria`** (`accion = 'lectura_previa'`),
+  con el usuario. La pesada con bascula era atomica; con esto alguien puede ver
+  un faltante antes de que exista la pesada y no registrarla. El rastro es lo
+  que impide que eso sea invisible. Por eso es POST y no GET, y por eso pide el
+  rol que puede pesar.
+- **Al registrar, `POST /pesadas` vuelve a leer la bascula.** El peso de la
+  lectura previa no se envia ni se reutiliza.
+- **Null no es "no".** Con la bascula en movimiento responde 200 con
+  `estable: false` y sin diferencia. Sin tolerancia configurada,
+  `generaria_evento` va en null.
+
+| Codigo | Cuando |
+|---|---|
+| 200 | Lectura hecha (estable o no) y anotada en auditoria |
+| 403 | Rol Consulta |
+| 404 | La orden no existe |
+| 422 | Falta `numero_orden` |
+| 503 | La bascula no respondio; queda en `GET /salud` |
+
+La lectura con anotacion de salud (`pesadas._leer_anotando_la_salud`) la
+comparten ahora la pesada y la lectura previa. Detalle y consulta SQL para
+encontrar lecturas previas sin pesada posterior, en
+[`docs/ux/CAMBIOS_UX_20261115.md`](docs/ux/CAMBIOS_UX_20261115.md).
+
 ## HU-02: consulta de la orden al ERP (DONE)
 
 > Como operador de despacho, quiero que el sistema obtenga del ERP/WMS el peso y
@@ -596,18 +634,21 @@ dentro.
 
 ### En la pantalla
 
-El bloque va al final del detalle, despues de las cifras, el clip y los
-fotogramas, porque es la conclusion y no el punto de partida. Las opciones que
+Desde el 15/11/2026 el bloque va en una columna al lado del video, en la pagina
+propia del evento: sigue siendo la conclusion, pero se escribe con la evidencia
+a la vista (antes iba al final del detalle, a tres pantallas del reproductor).
+Antes del cuadro de texto se avisa de que confirmar no se puede devolver a
+Pendiente. Las opciones que
 se ofrecen salen de `clasificaciones_posibles`, que calcula la API: repetir la
 tabla de transiciones en el dashboard acabaria ofreciendo un boton que la API
 rechaza, y quien lo pulsa no tiene forma de saber cual de las dos pantallas esta
 equivocada.
 
 Clasificar un evento suele sacarlo del filtro de la bandeja, que por defecto
-muestra solo los Pendientes. Por eso la confirmacion se pinta en el panel y no
-dentro del desplegable, y el evento recien clasificado se queda en el selector
-del detalle aunque ya no aparezca en la tabla: es donde esta su historial y
-desde donde se corrige una decision equivocada.
+muestra solo los Pendientes. El supervisor sigue en la pagina del evento, que es
+donde se pinta la confirmacion, donde esta su historial y desde donde se corrige
+una decision equivocada; Anterior y Siguiente recorren la lista de la bandeja de
+la que salio, aunque el evento ya no cumpla el filtro.
 
 Verificado ademas en un navegador real: comentario corto rechazado, evento
 confirmado con su usuario y su fecha, la opcion de volver a revision ya no se
@@ -807,6 +848,55 @@ permanente. Con `ADMIN_PASSWORD` vacia no se crea nada y queda advertido en el l
 | 409 | El correo ya esta registrado |
 | 422 | Rol desconocido, clave de menos de 8 caracteres o de mas de 72 bytes |
 
+## Dashboard: cambios de UX del 15/11/2026
+
+Tras una critica de diseno se corrigieron cinco fallos que afectaban la decision
+del supervisor y se aplicaron seis fases de mejora (textos, bandeja,
+confirmaciones, menu lateral, pesada guiada y tolerancias). Cambio
+`dashboard/app.py` y, en la fase 5, la API gano `POST /pesadas/lectura-previa`.
+El detalle, funcion por funcion, con lo comprobado y lo pendiente, esta en
+[`docs/ux/CAMBIOS_UX_20261115.md`](docs/ux/CAMBIOS_UX_20261115.md).
+
+Lo que conviene saber al leer el resto de este README:
+
+- Ya no hay pestanas: las pantallas estan en un menu lateral de tres grupos
+  (Operacion, Monitoreo, Administracion) y solo se ejecuta la que esta abierta.
+  Donde este README diga "la pestana X", lease "la pantalla X del menu".
+- El evento se abre en su propia pagina dentro de Eventos, no en un
+  desplegable al final de la bandeja.
+- Los filtros de la bandeja estan a la vista y la paginacion va en el pie.
+  "Pendientes" con periodo "Todo" manda `estado=pendiente` junto a
+  `sin_defectos`, y "Todos" con "Ultimos 7 dias" manda `desde`: antes las dos
+  combinaciones mostraban todo el historico.
+- El peso del ingreso manual empieza vacio.
+- Registro de pesada va por pasos (orden, carga, pesaje). Con bascula se lee
+  primero y se registra despues; cada lectura queda en auditoria.
+- Tolerancias es una tabla y se edita un producto cada vez, con confirmacion.
+  Los canales de aviso se muestran en texto y siguen sin editarse.
+- Revocar un token, cambiar un rol y desactivar o reactivar un usuario piden
+  confirmacion.
+- La cabecera lee `GET /salud` en cada pasada.
+- Las capturas `hu*.png` de `docs/` son anteriores a estos cambios. Las
+  actuales, con datos de ejemplo, estan en `docs/ux/capturas/`.
+
+Manual de usuario: [`docs/MANUAL_DE_USUARIO.md`](docs/MANUAL_DE_USUARIO.md).
+
+Para abrir el dashboard sin levantar el entorno, con datos inventados:
+
+```bash
+python docs/ux/api_simulada.py &
+API_INTERNAL_URL=http://127.0.0.1:8999 streamlit run dashboard/app.py
+python docs/ux/capturar.py        # rehace las 13 capturas del manual
+```
+
+Comprobacion sin levantar el entorno (API simulada, fuera de la suite):
+
+```bash
+python docs/ux/verificar_puntos_criticos.py
+python docs/ux/verificar_fases_1_a_4.py
+python docs/ux/verificar_fases_5_y_6.py
+```
+
 ## Base de datos
 
 El modelo de la seccion 6.5 esta en `db/01_esquema.sql`: 10 tablas, 2 vistas,
@@ -860,7 +950,8 @@ Configurar `utf8mb4` y `DATETIME(6)` en las migraciones, segun la seccion 6.5.
 docker compose exec api pytest --cov=app --cov-report=term-missing
 ```
 
-362 pruebas y 100 % de cobertura en los diecisiete modulos. El umbral esta fijado en
+620 pruebas y 100 % de cobertura en los veintiun modulos (cifra del 15/11/2026,
+medida fuera del entorno oficial: ver `docs/ux/CAMBIOS_UX_20261115.md`). El umbral esta fijado en
 `pytest.ini` con `--cov-fail-under=90`: la suite falla si baja de ahi. El reporte
 vigente esta en `reporte_coverage.txt`.
 

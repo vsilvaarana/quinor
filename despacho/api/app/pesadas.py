@@ -21,13 +21,14 @@ Los ajustes llegan por parametro: este modulo no conoce el entorno.
 from __future__ import annotations
 
 import datetime as dt
+from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 
 import structlog
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import auditoria, bascula, cargas, eventos, ordenes, salud
+from app import auditoria, bascula, cargas, configuracion, eventos, ordenes, salud
 from app.config import Ajustes
 from app.models import OrdenDespacho, Pesada
 
@@ -57,6 +58,138 @@ async def leer_bascula(ajustes: Ajustes, bascula_id: str) -> bascula.LecturaBasc
     )
 
 
+async def _leer_anotando_la_salud(
+    sesion: Session, ajustes: Ajustes, bascula_id: str,
+) -> bascula.LecturaBascula:
+    """Lee la bascula y deja en salud_componente como fue. Criterio 2 de HU-01.
+
+    Lo comparten el registro de la pesada y la lectura previa: las dos tocan el
+    mismo equipo, y una bascula que no contesta tiene que verse en GET /salud la
+    pregunte quien la pregunte.
+
+    Si falla, el registro de salud se confirma en su propia transaccion: la
+    peticion termina en error, pero la constancia de que la bascula fallo tiene
+    que sobrevivir. Si responde, la anotacion queda pendiente de confirmar para
+    quien llama.
+    """
+    try:
+        lectura = await leer_bascula(ajustes, bascula_id)
+    except bascula.ErrorBascula as exc:
+        salud.registrar_si_cambia(sesion, COMPONENTE_BASCULA, salud.ERROR, str(exc))
+        sesion.commit()
+        log.warning("bascula_sin_respuesta", bascula=bascula_id, error=str(exc))
+        raise BasculaNoResponde(str(exc)) from exc
+
+    salud.registrar_si_cambia(
+        sesion, COMPONENTE_BASCULA, salud.OK,
+        f"ultima lectura {lectura.peso_kg} kg, contador {lectura.contador}",
+    )
+    return lectura
+
+
+@dataclass(frozen=True)
+class LecturaPrevia:
+    """Lo que marca la bascula ahora, contra la orden, sin registrar la pesada."""
+
+    numero_orden: str
+    bascula_id: str
+    peso_kg: Decimal
+    estable: bool
+    leido_en: dt.datetime
+    peso_esperado_kg: Decimal
+    # Convencion 7, NULL no es cero. Con la bascula en movimiento el peso
+    # todavia no es un dato, asi que no hay diferencia que dar. Y sin tolerancia
+    # configurada no se sabe si habria evento: decir "no" seria dar por limpia
+    # una carga que nadie pudo comparar.
+    diferencia_kg: Decimal | None
+    diferencia_pct: Decimal | None
+    tolerancia_kg: Decimal | None
+    generaria_evento: bool | None
+
+
+async def lectura_previa(
+    sesion: Session,
+    ajustes: Ajustes,
+    numero_orden: str,
+    bascula_id: str | None = None,
+    usuario_id: int | None = None,
+) -> LecturaPrevia:
+    """Lee la bascula y dice que pasaria al registrar, sin registrar nada.
+
+    Existe para que el operador sepa antes de confirmar si esa pesada va a abrir
+    un evento, igual que ya lo sabia con el ingreso manual (critica de UX del
+    15/11/2026, fase 5).
+
+    Tiene un coste que hay que pagar a proposito. Hasta ahora la pesada con
+    bascula era atomica: se leia y se guardaba en la misma peticion, sin vuelta
+    atras. Con esta lectura alguien puede ver el faltante cuando todavia no
+    existe ningun registro, y no registrar. Por eso **cada lectura previa deja
+    una fila en auditoria**, con quien la pidio, para que orden y que marcaba la
+    bascula. Una lectura previa fuera de tolerancia sin pesada posterior deja de
+    ser invisible: es una pregunta que se puede hacer a la tabla.
+
+    No sustituye a la pesada. Al registrar, la API vuelve a leer la bascula: el
+    peso que se guarda nunca viaja desde el navegador.
+
+    No crea pesada ni evento, y no consume la marca de inicio de carga (HU-06).
+    """
+    bascula_id = bascula_id or ajustes.bascula_id
+    orden = await ordenes.obtener_orden(sesion, ajustes, numero_orden,
+                                        usuario_id=usuario_id)
+    lectura = await _leer_anotando_la_salud(sesion, ajustes, bascula_id)
+
+    diferencia_kg = diferencia_pct = tolerancia_kg = generaria_evento = None
+    if lectura.estable:
+        diferencia_kg, diferencia_pct = eventos.diferencias(
+            lectura.peso_kg, orden.peso_esperado_kg)
+        try:
+            tolerancia_kg = configuracion.tolerancia_de(
+                sesion, orden.producto, orden.peso_esperado_kg)
+        except configuracion.ProductoNoConfigurado:
+            pass
+        else:
+            generaria_evento = eventos.hay_discrepancia(diferencia_kg, tolerancia_kg)
+
+    def _texto(valor: Decimal | None) -> str | None:
+        return None if valor is None else str(valor)
+
+    auditoria.registrar(
+        sesion,
+        entidad="orden_despacho",
+        entidad_id=orden.id,
+        accion="lectura_previa",
+        usuario_id=usuario_id,
+        detalle={
+            "numero_orden": orden.numero_orden,
+            "bascula_id": bascula_id,
+            "peso_kg": str(lectura.peso_kg),
+            "estable": lectura.estable,
+            "contador_bascula": lectura.contador,
+            "peso_esperado_kg": str(orden.peso_esperado_kg),
+            "diferencia_kg": _texto(diferencia_kg),
+            "tolerancia_kg": _texto(tolerancia_kg),
+            "generaria_evento": generaria_evento,
+        },
+    )
+    sesion.commit()
+    log.info("lectura_previa", orden=orden.numero_orden, bascula=bascula_id,
+             peso=str(lectura.peso_kg), estable=lectura.estable,
+             generaria_evento=generaria_evento)
+
+    return LecturaPrevia(
+        numero_orden=orden.numero_orden,
+        bascula_id=bascula_id,
+        peso_kg=lectura.peso_kg,
+        estable=lectura.estable,
+        leido_en=lectura.leido_en,
+        peso_esperado_kg=orden.peso_esperado_kg,
+        diferencia_kg=diferencia_kg,
+        diferencia_pct=diferencia_pct,
+        tolerancia_kg=tolerancia_kg,
+        generaria_evento=generaria_evento,
+    )
+
+
 async def registrar_pesada(
     sesion: Session,
     ajustes: Ajustes,
@@ -81,21 +214,9 @@ async def registrar_pesada(
         momento = dt.datetime.now().replace(tzinfo=None)
         detalle_extra = {"motivo_manual": motivo_manual}
     else:
-        try:
-            lectura = await leer_bascula(ajustes, bascula_id)
-        except bascula.ErrorBascula as exc:
-            # Criterio 2. El registro de salud se confirma en su propia
-            # transaccion: la peticion termina en error, pero la constancia de
-            # que la bascula fallo tiene que sobrevivir.
-            salud.registrar_si_cambia(sesion, COMPONENTE_BASCULA, salud.ERROR, str(exc))
-            sesion.commit()
-            log.warning("bascula_sin_respuesta", bascula=bascula_id, error=str(exc))
-            raise BasculaNoResponde(str(exc)) from exc
-
-        salud.registrar_si_cambia(
-            sesion, COMPONENTE_BASCULA, salud.OK,
-            f"ultima lectura {lectura.peso_kg} kg, contador {lectura.contador}",
-        )
+        # Criterio 2: si la bascula no responde, el fallo queda en
+        # salud_componente antes de que esta funcion termine en error.
+        lectura = await _leer_anotando_la_salud(sesion, ajustes, bascula_id)
 
         if not lectura.estable:
             sesion.commit()

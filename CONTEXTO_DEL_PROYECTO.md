@@ -5,7 +5,12 @@
 > que, y lo que falta. Esta escrito para que una sesion que empieza de cero
 > pueda continuar sin repetir trabajo ni contradecir lo ya construido.
 >
-> Ultima actualizacion: **13/11/2026**: el servicio YOLO puede contar
+> Ultima actualizacion: **15/11/2026**: **mejora de UX del dashboard**, siete
+> fases cerradas salvo la prueba con un supervisor. El dashboard ya no tiene
+> pestanas (menu lateral), el evento tiene pagina propia, la pesada va por pasos
+> y hay un **endpoint nuevo, `POST /pesadas/lectura-previa`**. Resumen en la
+> seccion 13, "Mejora de UX del dashboard"; detalle en
+> `despacho/api/docs/ux/CAMBIOS_UX_20261115.md`. El 13/11/2026 el servicio YOLO pudo contar
 > **pallets** en lugar de sacos sueltos (`YOLO_MODO_CONTEO=pallets`, seccion 12).
 > El 05/11/2026 las camaras simuladas pasaron a poder
 > publicar videos reales (seccion 13). Antes, el 01/11/2026, la base paso a **MySQL 8 en AWS
@@ -257,6 +262,9 @@ quinor/
       app/veredictos.py   clasificacion del evento y transiciones (HU-13)
       db/01_esquema.sql   FUENTE DE VERDAD del modelo de datos
       dashboard/app.py    interfaz Streamlit, con el reproductor de HU-12
+      docs/MANUAL_DE_USUARIO.md   manual con capturas (15/11/2026)
+      docs/ux/            registro de la mejora de UX, scripts de comprobacion
+                          del dashboard, API simulada y capturas del manual
       sim/                simuladores de bascula (Modbus) y ERP
       tests/              una suite por modulo
       docker-compose.yml  los 16 servicios del entorno
@@ -507,6 +515,11 @@ suites corren tambien contra MariaDB, y el codigo debe servir en los dos.
 Las tres suites que usan base de datos corren verdes en **MySQL 8.0.46 y en
 MariaDB 10.11.14**.
 
+La tabla es anterior al 15/11/2026. Ese dia la suite de `api` se midio en **620
+pruebas y 100 %** (607 que ya habia mas 13 de `POST /pesadas/lectura-previa`),
+con MariaDB 10.11 local. El dashboard no entra en esa cifra: `pytest.ini` mide
+`app/`, y `dashboard/app.py` se comprueba aparte (seccion 13).
+
 ```bash
 # En cada servicio
 TEST_DATABASE_URL=mysql+pymysql://usuario:clave@127.0.0.1:3306/quinor_test pytest
@@ -598,6 +611,11 @@ hay que cambiarla en el hosting.
 
 ## 12. Lo que falta, con lo que hay que saber de cada cosa
 
+**Mejora de UX del dashboard (15/11/2026).** Falta verla contra el entorno real,
+probarla con un supervisor y decidir donde se muestran las lecturas previas de
+bascula sin pesada posterior. La lista completa esta al final del apartado
+"Mejora de UX del dashboard" de la seccion 13.
+
 **HU-17, cola de tareas.** Redis ya esta en el compose. El codigo esta preparado
 para que solo cambie quien llama.
 
@@ -684,8 +702,99 @@ Pesaje, el reloj de carga avanza solo (`st.fragment(run_every=1)`) y el
 ingreso manual avisa antes de registrar si se generara un evento. Los textos de
 la interfaz van en registro formal (usted) y con tildes. Las pestanas se llaman
 Eventos, Registro de pesada, Órdenes, Cámaras, Estado del sistema, Tolerancias,
-Tokens de acceso y Usuarios: el manual de usuario aun usa los nombres
-anteriores.
+Tokens de acceso y Usuarios. **Desde el 15/11/2026 ya no son pestanas sino
+pantallas de un menu lateral** (ver "Mejora de UX del dashboard", mas abajo).
+
+### Mejora de UX del dashboard (15/11/2026)
+
+Salio de una critica de diseno de las pantallas. Lo que sigue es lo que una
+sesion nueva necesita saber; el detalle, funcion por funcion, esta en
+`despacho/api/docs/ux/CAMBIOS_UX_20261115.md`, y el manual con capturas en
+`despacho/api/docs/MANUAL_DE_USUARIO.md`.
+
+**Que cambio, en orden de importancia**
+
+1. **Ya no hay pestanas.** Las ocho pestanas (`st.tabs`) son un menu lateral de
+   tres grupos con `st.navigation`: Operacion (Eventos, Registro de pesada,
+   Ordenes), Monitoreo (Camaras, Estado del sistema) y Administracion
+   (Tolerancias, Tokens de acceso, Usuarios). Solo se ejecuta la pantalla
+   abierta; antes cada clic volvia a pedir a la API los datos de las ocho.
+   Donde este archivo o un README digan "la pestana X", es la pantalla X.
+2. **El evento tiene pagina propia** (`_pagina_del_evento`), con Volver,
+   Anterior y Siguiente, y la clasificacion al lado del video. Antes se abria
+   en un desplegable al final de la bandeja.
+3. **La pesada va por pasos** (orden, carga, pesaje) que se abren de uno en
+   uno. Con bascula se lee primero y se registra despues.
+4. **Endpoint nuevo: `POST /pesadas/lectura-previa`.** Lee la bascula y dice si
+   la pesada generaria un evento, sin registrar nada. Es el unico cambio en la
+   API. No esta en el Excel del backlog, por decision del responsable.
+5. **Bandeja:** filtros a la vista, paginacion en el pie, la diferencia en kg
+   en grande y una etiqueta de hallazgo por tarjeta (posible sustitucion,
+   faltan sacos, conteo pendiente).
+6. **Confirmaciones** (`_confirmar`, con `st.dialog`) antes de revocar un
+   token, cambiar un rol, desactivar un usuario o cambiar una tolerancia.
+7. **Tolerancias en una tabla**; se edita un producto cada vez.
+8. **Textos:** tildes y trato de usted en la interfaz, sin jerga. Los
+   comentarios del codigo siguen sin tildes.
+
+**Decisiones que no hay que deshacer**
+
+- **Cada lectura previa de la bascula deja una fila en `auditoria`**
+  (`accion = 'lectura_previa'`). La pesada con bascula era atomica; con la
+  lectura previa alguien puede ver un faltante antes de que exista la pesada y
+  no registrarla. El rastro es lo que lo hace visible. Quitarlo "porque es solo
+  una consulta" reabre el hueco.
+- **Al registrar, la API vuelve a leer la bascula.** El peso nunca viaja desde
+  el navegador, ni el de la lectura previa.
+- **El peso del ingreso manual empieza vacio.** Venia precargado con el peso
+  esperado de la orden, justo el valor que esconde un faltante.
+- **La diferencia de peso de un evento va en rojo, falte o sobre.** Con
+  `delta_color="inverse"` fijo, un faltante salia en verde.
+- **La cabecera lee `GET /salud`.** Antes decia "En linea" siempre.
+- **Elegir un rol en la lista no lo aplica:** hay que pulsar "Aplicar rol" y
+  confirmar.
+- **El dashboard no repite reglas de la API.** La tolerancia efectiva, las
+  transiciones de estado y si una pesada genera evento los calcula la API.
+
+**Trampas de Streamlit que costaron tiempo**
+
+- Un control que no se dibuja en una pasada pierde su valor. Los filtros de la
+  bandeja se conservan con `_conservar_filtros`, llamado desde el programa.
+- Dentro de un `st.form` no hay redibujado mientras se escribe: por eso no hay
+  contador en vivo en la justificacion.
+- `AppTest` 1.41 no simula el clic en `st.navigation`, el redibujado parcial de
+  `st.dialog` ni el valor de `st.pills`. Los scripts de `docs/ux/` lo imitan.
+
+**Como se comprueba**
+
+- `docs/ux/verificar_*.py`: tres scripts con `AppTest` y una API simulada (109
+  comprobaciones). No estan en `tests/` porque no corren contra cosas reales.
+- `docs/ux/capturar.py`: levanta `docs/ux/api_simulada.py` y el dashboard, lo
+  recorre con un navegador sin ventana y guarda 13 capturas. Es la unica
+  comprobacion visual que hay: encontro cinco defectos de disposicion que las
+  pruebas no veian (un peso que pisaba un aviso, una fecha partida en dos
+  lineas, una columna fuera de pantalla).
+- La suite de `api` quedo en 620 pruebas y 100 % tras anadir 13 del endpoint
+  nuevo. Se midio con MariaDB 10.11 local, fuera del `docker compose` oficial:
+  `reporte_coverage.txt` no se regenero.
+
+**Lo que falta de esta mejora**
+
+- **Verlo contra el entorno real.** Todo se comprobo con datos simulados.
+- **Prueba con un supervisor.** El guion esta en
+  `docs/ux/PRUEBA_CON_SUPERVISOR.md`.
+- **Las lecturas previas sin pesada posterior no se ven en ninguna pantalla.**
+  Hoy solo con una consulta SQL (esta en el registro de cambios). Falta decidir
+  donde mostrarlas.
+- **Los canales de aviso por severidad no se editan**: la API no lo ofrece
+  (queda para HU-10). La pantalla los muestra en texto.
+- **Las capturas `hu*.png` de `docs/`** son evidencia de cada historia y
+  muestran las pantallas anteriores. No se tocaron.
+- **AKS:** el codigo va dentro de la imagen. Hay que reconstruir y publicar la
+  imagen de `api` (la usa tambien el dashboard) para ver los cambios alli.
+- **No se hizo commit** de nada de esto.
+
+### El entorno de desarrollo (continuacion)
 
 **Videos reales sin camaras.** Las camaras simuladas publican en bucle los
 videos que haya en `despacho/api/videos/rampa-01` y `rampa-02` (o en la carpeta
