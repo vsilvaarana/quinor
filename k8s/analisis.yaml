@@ -1,0 +1,290 @@
+# =============================================================================
+# Servicios de analisis y aviso: YOLO (HU-07, HU-08), vision-lenguaje (HU-09),
+# notificaciones (HU-10) y el buzon de pruebas mailpit.
+#
+# yolo y vlm NO reciben el Secret completo: no necesitan la clave de la base ni
+# la del bucket, y vlm es el unico servicio que sale a internet. Cada uno recibe
+# solo las claves que usa (optional: true -> si no estan en el .env, la variable
+# queda sin definir y el servicio las trata como vacias).
+# =============================================================================
+
+# ------------------------------------------------------------------------ yolo
+# Los pesos van dentro de la imagen (el Dockerfile copia modelos/), asi que
+# YOLO_WEIGHTS apunta a /code/modelos y no a un volumen /modelos como en el
+# compose. Para cambiar de modelo hay que reconstruir la imagen.
+#
+# En CPU el analisis tarda mas que el video: es lo esperado en desarrollo. En
+# planta se le asigna la GPU del RNF-06 (YOLO_DEVICE=0 y un nodo con GPU).
+#
+# podAffinity: el buffer de video es un disco que solo se monta en un nodo; yolo
+# tiene que caer donde esta el grabador.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yolo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: yolo }
+  template:
+    metadata:
+      labels: { app: yolo }
+    spec:
+      enableServiceLinks: false
+      securityContext:
+        fsGroup: 1000
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels: { app: grabador }
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: yolo
+          image: quinor-yolo
+          command:
+            - uvicorn
+            - app.main:create_app
+            - --factory
+            - --host=0.0.0.0
+            - --port=8002
+          ports:
+            - containerPort: 8002
+          env:
+            - { name: YOLO_WEIGHTS, value: "/code/modelos/sacos.pt" }
+            - { name: YOLO_DEVICE, value: "cpu" }
+            - { name: LINEA_CARGA, value: "0.5,0.0,0.5,1.0" }
+            - { name: ZONA_CARGA, value: "0.0,0.0,1.0,1.0" }
+            - { name: PERSONAS_HABITUALES, value: "3" }
+            - { name: PERMANENCIA_MAX_SEGUNDOS, value: "600" }
+            - { name: TZ, value: "America/Lima" }
+            - name: YOLO_API_KEY
+              valueFrom:
+                secretKeyRef: { name: quinor-env, key: YOLO_API_KEY, optional: true }
+          volumeMounts:
+            - name: video
+              mountPath: /video
+              readOnly: true
+          # Cargar PyTorch y los pesos tarda: hasta 150 s antes de darlo por caido.
+          startupProbe:
+            httpGet: { path: /, port: 8002 }
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: { path: /, port: 8002 }
+            periodSeconds: 15
+            timeoutSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { memory: 3Gi }
+      volumes:
+        - name: video
+          persistentVolumeClaim:
+            claimName: video-buffer
+            readOnly: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yolo
+spec:
+  selector: { app: yolo }
+  ports:
+    - port: 8002
+      targetPort: 8002
+---
+# ------------------------------------------------------------------------- vlm
+# VLM_PROVIDER=stub a proposito: un valor que saliera a internet convertiria un
+# despliegue mal configurado en una factura. Para usar un proveedor real, cambiar
+# aqui VLM_PROVIDER, VLM_MODEL y VLM_BASE_URL, y poner VLM_API_KEY en el .env.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vlm
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: vlm }
+  template:
+    metadata:
+      labels: { app: vlm }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: vlm
+          image: quinor-vlm
+          command:
+            - uvicorn
+            - app.main:create_app
+            - --factory
+            - --host=0.0.0.0
+            - --port=8003
+          ports:
+            - containerPort: 8003
+          env:
+            - { name: VLM_PROVIDER, value: "stub" }
+            - { name: VLM_MODEL, value: "claude-sonnet-4-5" }
+            - { name: VLM_BASE_URL, value: "http://vlm-stub:8004" }
+            - { name: VLM_MAX_ATTEMPTS, value: "3" }
+            - { name: PLANTA_SACOS_POR_CAMION, value: "400" }
+            - { name: PLANTA_DURACION_CARGA_MIN, value: "45" }
+            - { name: PERSONAS_HABITUALES, value: "3" }
+            - { name: TZ, value: "America/Lima" }
+            - name: VLM_API_KEY
+              valueFrom:
+                secretKeyRef: { name: quinor-env, key: VLM_API_KEY, optional: true }
+            - name: VLM_SERVICE_API_KEY
+              valueFrom:
+                secretKeyRef: { name: quinor-env, key: VLM_SERVICE_API_KEY, optional: true }
+          readinessProbe:
+            httpGet: { path: /, port: 8003 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 10
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits: { memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vlm
+spec:
+  selector: { app: vlm }
+  ports:
+    - port: 8003
+      targetPort: 8003
+---
+# --------------------------------------------------------------------- vlm-stub
+# Proveedor de mentira que habla el mismo dialecto que el real. Sus descripciones
+# no son analisis; GET /salud del servicio vlm lo avisa.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vlm-stub
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: vlm-stub }
+  template:
+    metadata:
+      labels: { app: vlm-stub }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: vlm-stub
+          image: quinor-vlm
+          command: ["python", "-m", "sim.vlm_stub", "--puerto", "8004"]
+          ports:
+            - containerPort: 8004
+          env:
+            - { name: TZ, value: "America/Lima" }
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vlm-stub
+spec:
+  selector: { app: vlm-stub }
+  ports:
+    - port: 8004
+      targetPort: 8004
+---
+# -------------------------------------------------------------- notificaciones
+# Necesita la base (registra cada aviso) y el SMTP: recibe el Secret completo,
+# como en el compose. SMTP_HOST, SMTP_PORT, DASHBOARD_BASE_URL y el resto salen
+# del .env. Por defecto el correo va a mailpit, nunca a un relay real.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notificaciones
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: notificaciones }
+  template:
+    metadata:
+      labels: { app: notificaciones }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: notificaciones
+          image: quinor-notificaciones
+          command:
+            - uvicorn
+            - app.main:create_app
+            - --factory
+            - --host=0.0.0.0
+            - --port=8004
+          ports:
+            - containerPort: 8004
+          envFrom:
+            - secretRef: { name: quinor-env }
+          volumeMounts:
+            - name: certs
+              mountPath: /certs
+              readOnly: true
+          readinessProbe:
+            httpGet: { path: /, port: 8004 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 10
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits: { memory: 512Mi }
+      volumes:
+        - name: certs
+          configMap:
+            name: aws-certs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notificaciones
+spec:
+  selector: { app: notificaciones }
+  ports:
+    - port: 8004
+      targetPort: 8004
+---
+# --------------------------------------------------------------------- mailpit
+# Acepta cualquier correo y no lo entrega a nadie: se leen en su interfaz web
+# (puerto 8025). Evita escribirle a un supervisor de verdad durante una prueba.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailpit
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mailpit }
+  template:
+    metadata:
+      labels: { app: mailpit }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: mailpit
+          image: axllent/mailpit:v1.21
+          env:
+            - { name: MP_MAX_MESSAGES, value: "500" }
+            - { name: TZ, value: "America/Lima" }
+          ports:
+            - { containerPort: 1025, name: smtp }
+            - { containerPort: 8025, name: web }
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailpit
+spec:
+  selector: { app: mailpit }
+  ports:
+    - { name: smtp, port: 1025, targetPort: 1025 }
+    - { name: web, port: 8025, targetPort: 8025 }

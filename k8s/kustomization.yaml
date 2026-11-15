@@ -1,0 +1,37 @@
+# =============================================================================
+# QUINOR - Despliegue en Kubernetes (AKS)
+#
+# Aplicar con:   kubectl apply -k .
+# (desde esta carpeta; el namespace "quinor" y los Secrets los crean los scripts
+# 01 y 02 de despliegue_azure)
+#
+# Aqui se cambia, en un solo sitio, de que registro y con que etiqueta salen las
+# 5 imagenes propias. Los manifiestos usan nombres cortos (quinor-api, etc.).
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: quinor
+
+resources:
+  - almacenamiento.yaml
+  - base.yaml
+  - video.yaml
+  - analisis.yaml
+
+images:
+  - name: quinor-api
+    newName: quinoracr2026.azurecr.io/quinor-api
+    newTag: "1.0"
+  - name: quinor-grabador
+    newName: quinoracr2026.azurecr.io/quinor-grabador
+    newTag: "1.0"
+  - name: quinor-yolo
+    newName: quinoracr2026.azurecr.io/quinor-yolo
+    newTag: "1.0"
+  - name: quinor-vlm
+    newName: quinoracr2026.azurecr.io/quinor-vlm
+    newTag: "1.0"
+  - name: quinor-notificaciones
+    newName: quinoracr2026.azurecr.io/quinor-notificaciones
+    newTag: "1.0"

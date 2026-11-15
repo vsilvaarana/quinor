@@ -1,0 +1,197 @@
+# =============================================================================
+# Orquestador, dashboard y simuladores de planta (bascula Modbus y ERP).
+# Todos usan la imagen quinor-api. Los Services se llaman igual que en el
+# docker-compose.yml, de modo que las direcciones del .env (http://erp-mock:8001,
+# SCALE_HOST=scale-sim...) funcionan sin tocarlas.
+#
+# enableServiceLinks: false -> Kubernetes inyectaria variables como API_PORT o
+# YOLO_PORT=tcp://10.0.0.5:8002, que chocan con las del .env que tienen el mismo
+# nombre pero otro significado.
+# =============================================================================
+
+# ------------------------------------------------------------ scale-sim (HU-01)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scale-sim
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: scale-sim }
+  template:
+    metadata:
+      labels: { app: scale-sim }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: scale-sim
+          image: quinor-api
+          command: ["python", "-m", "sim.scale_sim"]
+          ports:
+            - containerPort: 5020
+          envFrom:
+            - secretRef: { name: quinor-env }
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scale-sim
+spec:
+  selector: { app: scale-sim }
+  ports:
+    - port: 5020
+      targetPort: 5020
+---
+# ------------------------------------------------------------- erp-mock (HU-02)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: erp-mock
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: erp-mock }
+  template:
+    metadata:
+      labels: { app: erp-mock }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: erp-mock
+          image: quinor-api
+          command: ["uvicorn", "sim.erp_mock:app", "--host", "0.0.0.0", "--port", "8001"]
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - secretRef: { name: quinor-env }
+          readinessProbe:
+            httpGet: { path: /salud, port: 8001 }
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: erp-mock
+spec:
+  selector: { app: erp-mock }
+  ports:
+    - port: 8001
+      targetPort: 8001
+---
+# ----------------------------------------------------- api (orquestador, HU-01..)
+# Sin --reload: en el compose recarga al cambiar el codigo montado; aqui el codigo
+# va dentro de la imagen y vigilar archivos solo gastaria CPU.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: api }
+  template:
+    metadata:
+      labels: { app: api }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: api
+          image: quinor-api
+          command:
+            - uvicorn
+            - app.main:create_app
+            - --factory
+            - --host=0.0.0.0
+            - --port=8000
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef: { name: quinor-env }
+          volumeMounts:
+            - name: certs
+              mountPath: /certs
+              readOnly: true
+          # GET / es la unica ruta publica; /salud exige token.
+          readinessProbe:
+            httpGet: { path: /, port: 8000 }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 5
+          livenessProbe:
+            httpGet: { path: /, port: 8000 }
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+      volumes:
+        - name: certs
+          configMap:
+            name: aws-certs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  selector: { app: api }
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+# ------------------------------------------------------------------- dashboard
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: dashboard }
+  template:
+    metadata:
+      labels: { app: dashboard }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: dashboard
+          image: quinor-api
+          command:
+            - streamlit
+            - run
+            - dashboard/app.py
+            - --server.port=8501
+            - --server.address=0.0.0.0
+            - --server.headless=true
+          ports:
+            - containerPort: 8501
+          envFrom:
+            - secretRef: { name: quinor-env }
+          readinessProbe:
+            httpGet: { path: /_stcore/health, port: 8501 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard
+spec:
+  selector: { app: dashboard }
+  ports:
+    - port: 8501
+      targetPort: 8501

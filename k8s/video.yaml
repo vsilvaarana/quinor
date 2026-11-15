@@ -1,0 +1,149 @@
+# =============================================================================
+# Camaras simuladas, servidor RTSP y grabador (HU-05, HU-06).
+# =============================================================================
+
+# ----------------------------------------------------------------- rtsp-server
+# Hace de camara IP mientras no haya camaras reales: camara-sim-01/02 publican
+# contra el y el grabador se conecta igual que lo hara en planta.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rtsp-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: rtsp-server }
+  template:
+    metadata:
+      labels: { app: rtsp-server }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: rtsp-server
+          image: bluenviron/mediamtx:1.11.3
+          env:
+            - { name: MTX_RTSPADDRESS, value: ":8554" }
+            - { name: MTX_RTSPTRANSPORTS, value: "tcp" }
+            - { name: MTX_RTMP, value: "no" }
+            - { name: MTX_HLS, value: "no" }
+            - { name: MTX_WEBRTC, value: "no" }
+            - { name: MTX_SRT, value: "no" }
+            - { name: MTX_API, value: "no" }
+            - { name: MTX_LOGLEVEL, value: "warn" }
+          ports:
+            - containerPort: 8554
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rtsp-server
+spec:
+  selector: { app: rtsp-server }
+  ports:
+    - port: 8554
+      targetPort: 8554
+---
+# ------------------------------------------------------------------ camara-sim-01
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: camara-sim-01
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: camara-sim-01 }
+  template:
+    metadata:
+      labels: { app: camara-sim-01 }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: camara-sim
+          image: quinor-grabador
+          command: ["python", "-m", "sim.camara_sim"]
+          env:
+            - { name: CAMERA_ID, value: "camara-01" }
+            - { name: CAMERA_PUBLISH_URL, value: "rtsp://rtsp-server:8554/rampa-01" }
+            - { name: TZ, value: "America/Lima" }
+          resources:
+            requests: { cpu: 100m, memory: 64Mi }
+            limits: { memory: 256Mi }
+---
+# ------------------------------------------------------------------ camara-sim-02
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: camara-sim-02
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: camara-sim-02 }
+  template:
+    metadata:
+      labels: { app: camara-sim-02 }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: camara-sim
+          image: quinor-grabador
+          command: ["python", "-m", "sim.camara_sim"]
+          env:
+            - { name: CAMERA_ID, value: "camara-02" }
+            - { name: CAMERA_PUBLISH_URL, value: "rtsp://rtsp-server:8554/rampa-02" }
+            - { name: TZ, value: "America/Lima" }
+          resources:
+            requests: { cpu: 100m, memory: 64Mi }
+            limits: { memory: 256Mi }
+---
+# --------------------------------------------------------------------- grabador
+# strategy Recreate: nunca dos grabadores a la vez. Con la actualizacion gradual
+# habria un momento con el pod viejo y el nuevo tomando los mismos eventos y
+# recortando cada uno su propio buffer.
+#
+# Las URL de YOLO, VLM y notificaciones, las camaras y las claves del S3 salen
+# del Secret quinor-env (el .env). Si alguna URL queda vacia, ese paso queda
+# apagado y el grabador sigue grabando.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grabador
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: grabador }
+  template:
+    metadata:
+      labels: { app: grabador }
+    spec:
+      enableServiceLinks: false
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: grabador
+          image: quinor-grabador
+          command: ["python", "-m", "app.grabador"]
+          envFrom:
+            - secretRef: { name: quinor-env }
+          env:
+            - { name: VIDEO_DIR, value: "/video" }
+          volumeMounts:
+            - name: video
+              mountPath: /video
+            - name: certs
+              mountPath: /certs
+              readOnly: true
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 1Gi }
+      volumes:
+        - name: video
+          persistentVolumeClaim:
+            claimName: video-buffer
+        - name: certs
+          configMap:
+            name: aws-certs

@@ -1,0 +1,20 @@
+# Buffer circular de video de HU-05 (72 h). Lo escribe el grabador y lo lee YOLO:
+# el clip viaja por ruta de disco y no por HTTP porque son cientos de megas por
+# evento.
+#
+# Un disco de Azure es ReadWriteOnce: solo se monta en un nodo a la vez, pero lo
+# pueden usar varios pods de ESE nodo. Por eso yolo lleva una afinidad con el
+# grabador (ver analisis.yaml). Con un cluster de un nodo ocurre solo.
+#
+# 20 Gi alcanzan para las camaras simuladas. En planta (4 camaras, 72 h) hacen
+# falta cientos de GB: ese dimensionamiento no es el de esta demo.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: video-buffer
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: managed-csi
+  resources:
+    requests:
+      storage: 20Gi
