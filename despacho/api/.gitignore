@@ -6,3 +6,11 @@ __pycache__/
 .ruff_cache/
 htmlcov/
 .coverage
+
+# Videos de prueba: pesan demasiado para Git (ver videos/LEEME.md)
+videos/**/*.mp4
+videos/**/*.mkv
+videos/**/*.avi
+videos/**/*.mov
+videos/**/*.m4v
+videos/**/*.ts

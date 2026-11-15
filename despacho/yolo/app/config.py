@@ -27,6 +27,14 @@ LINEA_POR_DEFECTO = (0.5, 0.0, 0.5, 1.0)     # vertical, por el centro del cuadr
 # aqui a ciegas dejaria fuera a gente que si estuvo en la rampa.
 ZONA_POR_DEFECTO = (0.0, 0.0, 1.0, 1.0)
 
+# Como se cuentan los sacos. "linea" es el conteo de HU-07: cada saco que cruza
+# la linea de carga. "pallets" cuenta los pallets que llegan a la zona de carga
+# y multiplica por los sacos de un pallet completo. Se agrego el 13/11/2026 con
+# el primer video real de la rampa: la camara de planta esta alta y lejos, un
+# saco suelto ocupa unos pocos pixeles y ni el modelo sintetico ni uno generico
+# lo encuentran, mientras que un pallet si se ve.
+MODOS_DE_CONTEO = ("linea", "pallets")
+
 
 @dataclass(frozen=True)
 class Ajustes:
@@ -92,6 +100,33 @@ class Ajustes:
     fotogramas_clave: int = 4
     calidad_jpeg: int = 80
 
+    # --- Conteo por pallets ---------------------------------------------------
+    # "linea" (por defecto, HU-07) o "pallets". Ver MODOS_DE_CONTEO.
+    modo_conteo: str = "linea"
+    clase_pallet: str = "pallet"
+    # Sacos de un pallet completo. Es un dato de QUINOR, no del video: el
+    # estandar de planta es 40 sacos de 50 kg. Lo que la camara no puede ver es
+    # un pallet al que le faltan sacos por dentro; eso lo sigue cazando la
+    # bascula, que es la que dispara el evento.
+    sacos_por_pallet: int = 40
+    # Zona donde el montacargas deja los pallets junto al camion. No es la zona
+    # de personas de HU-08: la gente se mueve por toda la rampa y los pallets se
+    # dejan en un sitio concreto. Por defecto el cuadro entero, por la misma
+    # razon que la otra: elegirla a ciegas dejaria fuera pallets que si llegaron.
+    zona_pallets: tuple[float, float, float, float] = ZONA_POR_DEFECTO
+    # Un pallet cuenta cuando se queda este tiempo en la zona. Uno que el
+    # montacargas solo cruza camino de otra rampa no se cargo aqui.
+    permanencia_pallet_s: float = 2.0
+    # Los pallets que ya estaban en la zona al empezar el clip no llegaron en
+    # esta carga, o llegaron antes de que empezara el recorte.
+    ignorar_inicio_s: float = 3.0
+    # Distancia, en coordenadas relativas, por debajo de la cual un identificador
+    # nuevo se toma como el mismo pallet que el rastreador perdio. Un operario
+    # que pasa por delante basta para que ByteTrack le cambie el numero, y sin
+    # esto ese pallet se contaria dos veces: 40 sacos inventados.
+    radio_pallet: float = 0.06
+    memoria_pallet_s: float = 6.0
+
     # GPU del RNF-06. "cpu" en desarrollo; "0" o "cuda:0" en planta.
     dispositivo: str = "cpu"
 
@@ -102,6 +137,10 @@ class Ajustes:
     def linea_valida(self) -> bool:
         x1, y1, x2, y2 = self.linea
         return (x1, y1) != (x2, y2) and all(0.0 <= v <= 1.0 for v in self.linea)
+
+    @property
+    def por_pallets(self) -> bool:
+        return self.modo_conteo == "pallets"
 
     @property
     def zona_valida(self) -> bool:
@@ -178,6 +217,14 @@ def cargar_ajustes(**sobrescrituras) -> Ajustes:
         "personas_habituales": int(_env("PERSONAS_HABITUALES", 3)),
         "permanencia_maxima_s": float(_env("PERMANENCIA_MAX_SEGUNDOS", 600.0)),
         "permanencia_minima_s": float(_env("PERMANENCIA_MIN_SEGUNDOS", 1.0)),
+        "modo_conteo": str(_env("YOLO_MODO_CONTEO", "linea")).strip().lower(),
+        "clase_pallet": _env("YOLO_CLASE_PALLET", "pallet"),
+        "sacos_por_pallet": int(_env("SACOS_POR_PALLET", 40)),
+        "zona_pallets": parsear_zona(_env("ZONA_PALLETS", "0.0,0.0,1.0,1.0")),
+        "permanencia_pallet_s": float(_env("PALLET_PERMANENCIA_SEGUNDOS", 2.0)),
+        "ignorar_inicio_s": float(_env("PALLET_IGNORAR_INICIO_SEGUNDOS", 3.0)),
+        "radio_pallet": float(_env("PALLET_RADIO", 0.06)),
+        "memoria_pallet_s": float(_env("PALLET_MEMORIA_SEGUNDOS", 6.0)),
         "fotogramas_clave": int(_env("FOTOGRAMAS_CLAVE", 4)),
         "calidad_jpeg": int(_env("CALIDAD_JPEG", 80)),
         "dispositivo": _env("YOLO_DEVICE", "cpu"),
@@ -199,6 +246,19 @@ def cargar_ajustes(**sobrescrituras) -> Ajustes:
         raise ValueError(
             "FOTOGRAMAS_CLAVE tiene que ser 1 o mas: un evento sin ninguna "
             "imagen deja al supervisor sin nada que mirar.")
+    if base["modo_conteo"] not in MODOS_DE_CONTEO:
+        raise ValueError(
+            f"YOLO_MODO_CONTEO es 'linea' o 'pallets'; se recibio "
+            f"'{base['modo_conteo']}'.")
+    if base["sacos_por_pallet"] < 1:
+        raise ValueError(
+            "SACOS_POR_PALLET tiene que ser 1 o mas: con cero, cada pallet que "
+            "llega contaria como una carga vacia.")
+    if base["permanencia_pallet_s"] < 0 or base["ignorar_inicio_s"] < 0 \
+            or base["memoria_pallet_s"] < 0:
+        raise ValueError("Los tiempos de PALLET_* no pueden ser negativos.")
+    if not 0.0 <= base["radio_pallet"] <= 1.0:
+        raise ValueError("PALLET_RADIO va en coordenadas relativas, de 0 a 1.")
     if not 1 <= base["calidad_jpeg"] <= 100:
         raise ValueError("CALIDAD_JPEG va de 1 a 100.")
     return Ajustes(**base)

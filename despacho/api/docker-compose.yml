@@ -191,7 +191,12 @@ services:
     environment:
       CAMERA_ID: camara-01
       CAMERA_PUBLISH_URL: rtsp://rtsp-server:8554/rampa-01
+      # Videos reales: si la carpeta tiene videos, se publican en bucle en lugar
+      # de la senal sintetica. Vacia, todo sigue como antes. Ver videos/LEEME.md.
+      CAMERA_VIDEO_DIR: /videos
       TZ: ${TZ}
+    volumes:
+      - ${CAMERA_VIDEOS_DIR:-./videos}/rampa-01:/videos:ro
     depends_on:
       - rtsp-server
     restart: unless-stopped
@@ -201,7 +206,10 @@ services:
     environment:
       CAMERA_ID: camara-02
       CAMERA_PUBLISH_URL: rtsp://rtsp-server:8554/rampa-02
+      CAMERA_VIDEO_DIR: /videos
       TZ: ${TZ}
+    volumes:
+      - ${CAMERA_VIDEOS_DIR:-./videos}/rampa-02:/videos:ro
 
   # ------------------------------------------------ Grabador de video HU-05
   grabador:
@@ -283,8 +291,11 @@ services:
     environment:
       # Los pesos llegan por volumen: cambiar de modelo no reconstruye la imagen,
       # que es lo que HU-19 va a necesitar al reentrenar con la rampa real.
-      YOLO_WEIGHTS: /modelos/sacos.pt
+      YOLO_WEIGHTS: ${YOLO_WEIGHTS:-/modelos/sacos.pt}
       YOLO_DEVICE: ${YOLO_DEVICE:-cpu}
+      # Fotogramas que se saltan entre inferencias (ver .env.example). Antes no
+      # llegaba al contenedor y el valor del .env no tenia efecto.
+      YOLO_FRAME_STRIDE: ${YOLO_FRAME_STRIDE:-1}
       # Calibracion de la linea de carga y de la zona donde se mide la
       # permanencia de las personas (HU-08), en coordenadas relativas. Las dos
       # se ajustan en el piloto mirando un clip real (apartado 9.1).
@@ -292,6 +303,14 @@ services:
       ZONA_CARGA: ${ZONA_CARGA:-0.0,0.0,1.0,1.0}
       PERSONAS_HABITUALES: ${PERSONAS_HABITUALES:-3}
       PERMANENCIA_MAX_SEGUNDOS: ${PERMANENCIA_MAX_SEGUNDOS:-600}
+      # Conteo por pallets (ver .env.example). Con el modo "linea" no se usan.
+      YOLO_MODO_CONTEO: ${YOLO_MODO_CONTEO:-linea}
+      SACOS_POR_PALLET: ${SACOS_POR_PALLET:-40}
+      ZONA_PALLETS: ${ZONA_PALLETS:-0.0,0.0,1.0,1.0}
+      PALLET_PERMANENCIA_SEGUNDOS: ${PALLET_PERMANENCIA_SEGUNDOS:-2}
+      PALLET_IGNORAR_INICIO_SEGUNDOS: ${PALLET_IGNORAR_INICIO_SEGUNDOS:-3}
+      PALLET_RADIO: ${PALLET_RADIO:-0.06}
+      PALLET_MEMORIA_SEGUNDOS: ${PALLET_MEMORIA_SEGUNDOS:-6}
       # Clave compartida con el grabador. El servicio vive en la red interna del
       # apartado 8 y solo lo llama el grabador.
       YOLO_API_KEY: ${YOLO_API_KEY:-}

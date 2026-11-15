@@ -27,8 +27,8 @@ TIEMPO_LIMITE = 15
 # transiciones se permiten lo decide la API y llega en el detalle.
 NOMBRE_DEL_ESTADO = {
     "pendiente": "Pendiente",
-    "pendiente_analisis": "Pendiente de analisis",
-    "en_revision": "En revision",
+    "pendiente_analisis": "Pendiente de análisis",
+    "en_revision": "En revisión",
     "confirmado": "Confirmado",
     "falso_positivo": "Falso positivo",
     "sin_clip": "Sin clip",
@@ -48,6 +48,117 @@ DETALLE_ABIERTO = "detalle_abierto"
 ULTIMO_CLASIFICADO = "ultimo_evento_clasificado"
 
 st.set_page_config(page_title="QUINOR - Control de despacho", page_icon="📦", layout="wide")
+
+# El evento que el supervisor eligio en la bandeja, para abrir su detalle.
+EVENTO_ELEGIDO = "evento_elegido"
+# Nombres de las decisiones de HU-13 tal como los lee el supervisor. Los estados
+# siguen siendo los de la API; esto solo cambia como se preguntan.
+NOMBRE_DE_LA_DECISION = {
+    "confirmado": "Confirmar discrepancia",
+    "falso_positivo": "Marcar como falso positivo",
+    "en_revision": "Mantener en revisión",
+    "pendiente": "Devolver a pendiente",
+}
+
+# Rediseno UX/UI del 05/11/2026; desde el 13/11/2026 en tema claro. El tema vive
+# en .streamlit/config.toml; aqui solo lo que el tema no cubre (tipografia de
+# titulos, tarjetas, la barra de pasos). Si las fuentes no cargan (sin internet)
+# se usa la del sistema y todo sigue legible.
+ESTILO = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap');
+html, body, [class*="css"], .stMarkdown, .stText, button, input, textarea {font-family: Inter, system-ui, sans-serif;}
+h1, h2, h3, h4, [data-testid="stMetricValue"] {font-family: 'Space Grotesk', Inter, sans-serif !important; letter-spacing: -.01em;}
+[data-testid="stMetricValue"] {font-weight: 500;}
+[data-testid="stMetricLabel"] p {color: #5F6B64;}
+.block-container {padding-top: 2.5rem; max-width: 1280px;}
+#MainMenu, footer, [data-testid="stDecoration"] {visibility: hidden;}
+.stTabs [data-baseweb="tab-list"] {gap: 4px; border-bottom: 1px solid #D9D4C7;}
+.stTabs [data-baseweb="tab"] {height: 48px; padding: 0 16px; font-size: 15px;}
+.stButton button, .stFormSubmitButton button, .stDownloadButton button {border-radius: 12px; min-height: 44px; font-weight: 500;}
+[data-testid="stVerticalBlockBorderWrapper"] {border-radius: 16px;}
+[data-testid="stExpander"] details {border-radius: 16px; border-color: #D9D4C7;}
+.q-saludo {font: 500 40px/1.12 'Space Grotesk', Inter, sans-serif; letter-spacing: -.02em; margin: 6px 0 4px;}
+.q-tenue {color: #5F6B64;}
+.q-oro {color: #A8741A;}
+.q-vivo {display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: #5F6B64;}
+.q-vivo i {width: 8px; height: 8px; border-radius: 50%; background: #2E8B57; animation: q-pulso 2s infinite;}
+@keyframes q-pulso {0% {box-shadow: 0 0 0 0 rgba(46,139,87,.55);} 70% {box-shadow: 0 0 0 10px rgba(46,139,87,0);} 100% {box-shadow: 0 0 0 0 rgba(46,139,87,0);}}
+.q-pasos {display: flex; gap: 6px; margin: 4px 0 2px;}
+.q-paso {flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0;}
+.q-paso b {height: 5px; border-radius: 3px; display: block;}
+.q-paso span {font-size: 12px; color: #5F6B64; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.q-ok b {background: #2E8B57;} .q-curso b {background: repeating-linear-gradient(90deg,#3B6FB6 0 6px,#C9D8EE 6px 12px); background-size: 24px 5px; animation: q-avanza 1s linear infinite;}
+.q-fallo b {background: transparent; box-shadow: inset 0 0 0 2px #A8741A;} .q-no b {background: #D9D4C7;}
+@keyframes q-avanza {from {background-position: 0 0;} to {background-position: 24px 0;}}
+.q-pill {display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 5px 10px; border-radius: 8px;}
+.q-alta {background: #FBE3DC; color: #9B2C14;} .q-media {background: #FCEFD6; color: #8A5A00;}
+.q-baja {background: #E3ECF7; color: #2F5487;} .q-sin {background: #ECEAE3; color: #5F6B64;}
+.q-chips {display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px;}
+.q-chip {font-size: 14px; padding: 7px 12px; border-radius: 999px; border: 1px solid #CFC9BA; color: #3A4640;}
+.q-chip strong {color: #1E2A23;}
+.q-grande {font: 500 30px 'Space Grotesk', Inter, sans-serif; line-height: 1.1;}
+.q-pasos-pesada {display: flex; gap: 10px; margin: 6px 0 18px;}
+.q-pp {flex: 1; padding: 12px 14px; border-radius: 12px; border: 1px solid #D9D4C7; font-size: 14px; color: #5F6B64;}
+.q-pp.hecho {border-color: #8CC5A5; color: #2E8B57;} .q-pp.actual {border-color: #A8741A; color: #1E2A23;}
+.q-reloj {font: 400 64px/1 'Space Grotesk', Inter, sans-serif; letter-spacing: -.03em; font-variant-numeric: tabular-nums;}
+</style>
+"""
+st.markdown(ESTILO, unsafe_allow_html=True)
+
+
+def _barra_de_pasos(pasos: list[tuple[str, str]]) -> str:
+    """HTML de la barra de avance: (nombre, estado) con estado ok|curso|fallo|no.
+
+    Responde a lo que mas se preguntaba en las pruebas: "en que momento se
+    actualiza". Cada evento dice que hizo el sistema y que le falta.
+    """
+    celdas = "".join(f'<div class="q-paso q-{estado}"><b></b><span>{nombre}</span></div>'
+                     for nombre, estado in pasos)
+    return f'<div class="q-pasos">{celdas}</div>'
+
+
+# Estados en los que un supervisor ya tomo el caso: ningun proceso automatico lo
+# vuelve a tocar, asi que lo que falte no esta "en curso", quedo sin hacer.
+ESTADOS_CERRADOS = {"en_revision", "confirmado", "falso_positivo"}
+
+
+def _sin_curso_si_cerrado(pasos: list[tuple[str, str]], estado: str) -> list[tuple[str, str]]:
+    """Un evento clasificado no tiene nada en marcha: lo pendiente se ve apagado.
+
+    Sin esto, los eventos viejos cerrados antes de que hubiera conteo parecian
+    seguir procesando para siempre (visto el 06/11/2026).
+    """
+    if estado not in ESTADOS_CERRADOS:
+        return pasos
+    return [(nombre, "no" if paso == "curso" else paso) for nombre, paso in pasos]
+
+
+def _pasos_de_la_fila(e: dict) -> list[tuple[str, str]]:
+    """Los pasos de un evento a partir de su fila de la bandeja."""
+    sin_clip = e["estado"] == "sin_clip"
+    clip = "fallo" if sin_clip else ("ok" if e["tiene_clip"] else "curso")
+    if sin_clip:
+        conteo = "no"
+    elif e["sacos_contados"] is not None:
+        conteo = "ok"
+    else:
+        conteo = "curso" if e["tiene_clip"] else "no"
+    if e["estado"] == "pendiente_analisis":
+        analisis = "fallo"
+    elif e["severidad"]:
+        analisis = "ok"
+    else:
+        analisis = "curso" if conteo == "ok" else "no"
+    return _sin_curso_si_cerrado(
+        [("Pesada", "ok"), ("Video", clip), ("Conteo", conteo), ("Análisis", analisis)],
+        e["estado"])
+
+
+def _pill_de_severidad(severidad: str | None) -> str:
+    if not severidad:
+        return '<span class="q-pill q-sin">Sin severidad</span>'
+    return f'<span class="q-pill q-{severidad}">Severidad {severidad}</span>'
 
 
 # --------------------------------------------------------------- transporte
@@ -77,12 +188,12 @@ def cerrar_sesion() -> None:
 
 # ------------------------------------------------------------------- ingreso
 def pantalla_de_ingreso() -> None:
-    st.title("QUINOR S.A.C. - Control de despacho")
-    st.caption("Identificate para continuar. HU-15, criterio 4.")
+    st.title("QUINOR S.A.C. · Control de despacho")
+    st.caption("Ingrese sus credenciales para continuar.")
     with st.form("ingreso"):
-        correo = st.text_input("Correo", placeholder="admin@quinor.local")
-        clave = st.text_input("Contrasena", type="password")
-        if not st.form_submit_button("Entrar", type="primary"):
+        correo = st.text_input("Correo electrónico", placeholder="usuario@quinor.local")
+        clave = st.text_input("Contraseña", type="password")
+        if not st.form_submit_button("Iniciar sesión", type="primary"):
             return
         try:
             respuesta = httpx.post(f"{API_URL}/auth/login", timeout=TIEMPO_LIMITE,
@@ -126,7 +237,7 @@ def panel_de_salud() -> None:
 
 # ------------------------------------------------------------------- tokens
 def panel_de_tokens() -> None:
-    st.subheader("Mis tokens de API")
+    st.subheader("Tokens de acceso")
     st.caption("El valor en claro se muestra una sola vez. Despues solo queda su hash.")
 
     with st.expander("Emitir un token nuevo"):
@@ -187,11 +298,8 @@ def panel_de_eventos() -> None:
     con cuatro consultas: servia con veinte eventos y no habria servido con un
     ano de operacion.
     """
-    st.subheader("Eventos de discrepancia")
-    st.caption("Se crea uno cuando la diferencia entre el peso real y el esperado "
-               "supera la tolerancia del producto.")
-
-    filtros = _filtros_de_la_bandeja()
+    with st.expander("Filtros"):
+        filtros = _filtros_de_la_bandeja()
 
     respuesta = pedir("GET", "/eventos/bandeja", params=filtros)
     if respuesta.status_code != 200:
@@ -204,7 +312,7 @@ def panel_de_eventos() -> None:
     _resultado_de_la_clasificacion()
 
     if not eventos:
-        st.success("No hay eventos de discrepancia con ese filtro.")
+        st.success("No hay eventos de discrepancia con el filtro seleccionado.")
         _pie_de_la_bandeja(bandeja)
         # Aun sin filas puede quedar el evento recien clasificado, que casi
         # siempre acaba de salirse del filtro por haberlo clasificado.
@@ -212,7 +320,51 @@ def panel_de_eventos() -> None:
         return
 
     _senales_de_la_bandeja(bandeja)
+    _tarjetas_de_la_bandeja(eventos)
 
+    with st.expander("Vista de tabla"):
+        _tabla_de_la_bandeja(eventos)
+
+    _pie_de_la_bandeja(bandeja)
+    _detalle_del_evento(eventos)
+
+
+def _elegir_evento(evento_id: int) -> None:
+    st.session_state[EVENTO_ELEGIDO] = evento_id
+    st.session_state[DETALLE_ABIERTO] = True
+
+
+def _tarjetas_de_la_bandeja(eventos: list[dict]) -> None:
+    """Un evento por tarjeta, con lo que importa a la vista: cuanto falta, que
+    vio la camara, en que va el analisis y un boton para revisarlo."""
+    for e in eventos:
+        with st.container(border=True):
+            izquierda, centro, derecha = st.columns([5, 4, 2], vertical_alignment="center")
+            fecha = e["creado_en"][:16].replace("T", " ")
+            izquierda.markdown(
+                f"{_pill_de_severidad(e['severidad'])} &nbsp;"
+                f"<span class='q-tenue'>#{e['id']} · {fecha}</span>",
+                unsafe_allow_html=True)
+            izquierda.markdown(f"**{e['numero_orden']}** · {e['cliente']}")
+            if e["sacos_contados"] is None:
+                sacos = "conteo de sacos pendiente"
+            elif e["sacos_esperados"] is None:
+                sacos = f"{e['sacos_contados']} sacos en el video"
+            else:
+                sacos = f"{e['sacos_contados']} de {e['sacos_esperados']} sacos en el video"
+            izquierda.caption(f"{float(e['diferencia_kg']):+,.0f} kg "
+                              f"({float(e['diferencia_pct']):+.1f} %) · {sacos}")
+            centro.markdown(_barra_de_pasos(_pasos_de_la_fila(e)), unsafe_allow_html=True)
+            incompleto = e["estado"] in ESTADOS_CERRADOS and (
+                e["sacos_contados"] is None or not e["severidad"])
+            centro.caption(NOMBRE_DEL_ESTADO.get(e["estado"], e["estado"])
+                           + (" · cerrado sin análisis completo" if incompleto else ""))
+            derecha.button("Ver detalle", key=f"revisar_{e['id']}", use_container_width=True,
+                           type="primary" if e["estado"] == "pendiente" else "secondary",
+                           on_click=_elegir_evento, args=(e["id"],))
+
+
+def _tabla_de_la_bandeja(eventos: list[dict]) -> None:
     st.dataframe(
         pd.DataFrame([{
             "ID": e["id"],
@@ -246,9 +398,6 @@ def panel_de_eventos() -> None:
                      else ("si" if e["tiene_clip"] else "en curso")),
         } for e in eventos]),
         use_container_width=True, hide_index=True)
-
-    _pie_de_la_bandeja(bandeja)
-    _detalle_del_evento(eventos)
 
 
 def _resultado_de_la_clasificacion() -> None:
@@ -295,14 +444,19 @@ def _filtros_de_la_bandeja() -> dict:
     estado = fila1[0].selectbox(
         "Estado", ["por defecto", "todos", "pendiente", "pendiente_analisis",
                    "en_revision", "confirmado", "falso_positivo", "sin_clip"],
-        help="Por defecto son los Pendientes, segun el criterio 3 de HU-11.")
+        format_func=lambda e: {"por defecto": "Pendientes", "todos": "Todos"}.get(
+            e, NOMBRE_DEL_ESTADO.get(e, e)))
     severidad = fila1[1].selectbox("Severidad",
-                                   ["todas", "alta", "media", "baja"])
+                                   ["todas", "alta", "media", "baja"],
+                                   format_func=str.capitalize)
     rango = fila1[2].selectbox(
         "Periodo", ["ultimos 7 dias", "hoy", "ultimos 30 dias", "todo",
-                    "personalizado"])
-    orden = fila1[3].text_input("Numero de orden",
-                                placeholder="0148, o la orden completa")
+                    "personalizado"],
+        format_func=lambda r: {"ultimos 7 dias": "Últimos 7 días", "hoy": "Hoy",
+                               "ultimos 30 dias": "Últimos 30 días", "todo": "Todo",
+                               "personalizado": "Personalizado"}[r])
+    orden = fila1[3].text_input("Número de orden",
+                                placeholder="Ej.: 0148 u ORD-2026-0148")
 
     desde = hasta = None
     if rango == "personalizado":
@@ -314,10 +468,9 @@ def _filtros_de_la_bandeja() -> dict:
     fila3 = st.columns([2, 1, 1])
     solo_faltante = fila3[0].checkbox(
         "Solo con faltante de sacos",
-        help="Deja fuera las cargas donde el conteo cuadra. Peso corto con los "
-             "sacos completos apunta a sustitucion y se ve quitando esto.")
-    tamano = fila3[1].selectbox("Filas por pagina", [25, 50, 100, 200], index=1)
-    pagina = fila3[2].number_input("Pagina", min_value=1, value=1, step=1)
+        help="Excluye las cargas cuyo conteo de sacos coincide con la orden.")
+    tamano = fila3[1].selectbox("Filas por página", [25, 50, 100, 200], index=1)
+    pagina = fila3[2].number_input("Página", min_value=1, value=1, step=1)
 
     filtros: dict = {"tamano": tamano, "pagina": int(pagina)}
     if estado == "todos":
@@ -357,54 +510,48 @@ def _aviso_de_filtros_por_defecto(bandeja: dict) -> None:
     if "estado" in puestos:
         partes.append("solo los **Pendientes**")
     if "desde" in puestos:
-        partes.append("de los **ultimos 7 dias**")
+        partes.append("de los **últimos 7 días**")
     st.caption("Vista por defecto: " + " ".join(partes) +
-               ". Cambia Estado o Periodo para ver mas.")
+               ". Ajuste los filtros de Estado o Periodo para ampliar la vista.")
 
 
 def _senales_de_la_bandeja(bandeja: dict) -> None:
-    """Lo que conviene mirar antes que la tabla.
+    """Lo que conviene mirar antes que la lista, en una linea de etiquetas.
 
     Las cifras salen del resumen que calcula la API sobre la pagina que se esta
     viendo, no de recorrer las filas aqui: asi la pantalla y la API no pueden
-    contar cosas distintas.
+    contar cosas distintas. La explicacion larga queda a un clic, para que la
+    pantalla no abrume.
     """
     resumen = bandeja.get("resumen") or {}
-
-    if resumen.get("abiertos"):
-        st.warning(f"{resumen['abiertos']} evento(s) pendientes de revisar.")
-
-    # HU-07, criterio 3. Una carga con el peso corto y los sacos completos no es
-    # lo mismo que una con sacos de menos: la primera apunta a sustitucion de
-    # producto, la segunda a hurto de bultos.
-    if resumen.get("con_faltante_de_sacos"):
-        st.warning(
-            f"{resumen['con_faltante_de_sacos']} evento(s) con menos sacos en el "
-            f"video que en la orden. Peso corto con los sacos completos apunta a "
-            f"producto sustituido; sacos de menos, a bultos que no subieron.")
-
-    # HU-08 y RN-03. La presencia anomala es, junto con la diferencia de sacos,
-    # lo que hace que HU-09 llame al modelo de vision-lenguaje.
-    if resumen.get("con_personal_anomalo"):
-        st.warning(
-            f"{resumen['con_personal_anomalo']} evento(s) con presencia de personal "
-            f"que llamo la atencion: mas gente de la habitual a la vez, alguien "
-            f"mucho tiempo en zona, o personas en rampa sin sacos cruzando. Es un "
-            f"motivo para mirar el clip, no una conclusion sobre nadie.")
-
-    # HU-09, criterio 3 y apartado 5.3. Un evento sin descripcion no es lo mismo
-    # que uno que nadie intento describir.
-    sin_analisis = [e for e in bandeja["filas"]
-                    if e["estado"] == "pendiente_analisis"]
-    if sin_analisis:
-        st.info(f"{len(sin_analisis)} evento(s) quedaron en Pendiente de analisis: "
-                f"el modelo de vision-lenguaje fallo tras sus reintentos. La "
-                f"severidad si esta, porque sale de la regla y no del modelo.")
-
-    sin_clip = [e for e in bandeja["filas"] if e["estado"] == "sin_clip"]
-    if sin_clip:
-        st.info(f"{len(sin_clip)} evento(s) sin clip: no habia video de esa ventana "
-                f"en el buffer. El detalle del motivo esta en la auditoria.")
+    filas = bandeja["filas"]
+    sin_analisis = sum(1 for e in filas if e["estado"] == "pendiente_analisis")
+    sin_clip = sum(1 for e in filas if e["estado"] == "sin_clip")
+    senales = [
+        (resumen.get("abiertos"), "pendiente(s) de revisión"),
+        (resumen.get("con_faltante_de_sacos"), "con faltante de sacos"),
+        (resumen.get("con_personal_anomalo"), "con presencia de personal atípica"),
+        (sin_analisis, "sin descripción automática"),
+        (sin_clip, "sin video"),
+    ]
+    chips = "".join(f'<span class="q-chip"><strong>{n}</strong> {texto}</span>'
+                    for n, texto in senales if n)
+    if not chips:
+        return
+    st.markdown(f'<div class="q-chips">{chips}</div>', unsafe_allow_html=True)
+    with st.popover("Leyenda"):
+        st.markdown(
+            "- **Faltante de sacos:** el video registró menos sacos que la orden. "
+            "Un peso inferior con los sacos completos sugiere sustitución de "
+            "producto; un faltante de sacos, bultos que no se cargaron.\n"
+            "- **Presencia de personal atípica:** más personas de lo habitual, "
+            "permanencias prolongadas o personal en la rampa sin movimiento de "
+            "sacos. Indica revisar el video; no constituye una conclusión sobre "
+            "ninguna persona.\n"
+            "- **Sin descripción automática:** el modelo de visión-lenguaje no "
+            "respondió. La severidad se mantiene, pues proviene de las reglas del negocio.\n"
+            "- **Sin video:** no existe grabación de esa carga. El motivo consta en "
+            "la auditoría.")
 
 
 def _pie_de_la_bandeja(bandeja: dict) -> None:
@@ -416,19 +563,18 @@ def _pie_de_la_bandeja(bandeja: dict) -> None:
     total = bandeja["total"]
     if total:
         donde = (f"Mostrando {bandeja['desde_fila']} a {bandeja['hasta_fila']} "
-                 f"de {total} evento(s). Pagina {bandeja['pagina']} de "
+                 f"de {total} evento(s). Página {bandeja['pagina']} de "
                  f"{bandeja['paginas']}.")
     else:
-        donde = "Ningun evento cumple ese filtro."
+        donde = "Ningún evento cumple el filtro."
 
     segundos = bandeja["segundos"]
     if bandeja["dentro_del_criterio"]:
-        st.caption(f"{donde} Consulta resuelta en {segundos * 1000:.0f} ms.")
+        st.caption(donde)
     else:
         # El criterio 2 se mide con lo que pasa de verdad, y una pantalla que se
         # vuelve lenta hay que verla antes de que sea costumbre.
-        st.warning(f"{donde} La consulta tardo {segundos:.1f} s, por encima de "
-                   f"los 2 s que exige el criterio 2 de HU-11.")
+        st.warning(f"{donde} La consulta tardó {segundos:.1f} s, más de lo habitual.")
 
 
 def _detalle_del_evento(eventos: list[dict]) -> None:
@@ -459,13 +605,17 @@ def _detalle_del_evento(eventos: list[dict]) -> None:
     if not abribles:
         return
 
-    with st.expander("Detalle del evento, con video y fotogramas",
+    preferido = st.session_state.get(EVENTO_ELEGIDO)
+    if preferido is not None and preferido not in abribles:
+        abribles = [preferido, *abribles]
+    with st.expander("Detalle del evento",
                      expanded=st.session_state.pop(DETALLE_ABIERTO, False)):
         elegido = st.selectbox("Evento", abribles,
+                               index=abribles.index(preferido) if preferido in abribles else 0,
                                format_func=lambda i: f"#{i}")
         if elegido not in [e["id"] for e in eventos]:
-            st.caption("Este evento ya no cumple el filtro de la bandeja: se "
-                       "sigue mostrando porque acabas de clasificarlo.")
+            st.caption("Este evento no cumple el filtro actual de la bandeja; se "
+                       "muestra porque fue seleccionado o clasificado recientemente.")
 
         respuesta = pedir("GET", f"/eventos/{elegido}/detalle")
         if respuesta.status_code != 200:
@@ -473,6 +623,7 @@ def _detalle_del_evento(eventos: list[dict]) -> None:
             return
         detalle = respuesta.json()
 
+        st.markdown(_barra_de_pasos(_pasos_del_detalle(detalle)), unsafe_allow_html=True)
         _cifras_del_detalle(detalle)
         _reproductor_del_clip(detalle)
         _fotogramas_del_detalle(detalle)
@@ -481,6 +632,24 @@ def _detalle_del_evento(eventos: list[dict]) -> None:
         _avisos_del_evento({"id": detalle["id"],
                             "severidad": detalle["analisis"]["severidad"]})
         _clasificacion_del_evento(detalle)
+
+
+def _pasos_del_detalle(detalle: dict) -> list[tuple[str, str]]:
+    """La misma barra de la bandeja, con lo que trae el detalle."""
+    sin_clip = detalle["estado"] == "sin_clip"
+    clip = "fallo" if sin_clip else ("ok" if detalle["clip"]["reproducible"] else "curso")
+    contado = detalle["sacos"]["analizado"]
+    conteo = "ok" if contado else ("no" if sin_clip else "curso")
+    analisis = detalle["analisis"]
+    if detalle["estado"] == "pendiente_analisis":
+        paso = "fallo"
+    elif analisis["severidad"]:
+        paso = "ok"
+    else:
+        paso = "curso" if contado else "no"
+    return _sin_curso_si_cerrado(
+        [("Pesada", "ok"), ("Video", clip), ("Conteo", conteo), ("Análisis", paso)],
+        detalle["estado"])
 
 
 def _cifras_del_detalle(detalle: dict) -> None:
@@ -667,14 +836,14 @@ def _analisis_del_detalle(detalle: dict) -> None:
     analisis = detalle["analisis"]
 
     if analisis["severidad"]:
-        st.write(f"Severidad: **{analisis['severidad'].capitalize()}** (regla RN-04)")
+        st.write(f"Severidad: **{analisis['severidad'].capitalize()}**")
 
     if not analisis["hay_descripcion"]:
         if detalle["estado"] == "pendiente_analisis":
-            st.info("El modelo de vision-lenguaje fallo tras sus reintentos. "
-                    "La severidad de arriba sale de la regla, no del modelo.")
+            st.info("La descripción automática no está disponible: el servicio de "
+                    "análisis no respondió. La severidad se calculó igualmente.")
         elif detalle["clip"]["reproducible"]:
-            st.caption("El clip todavia no tiene descripcion del modelo.")
+            st.caption("La descripción automática del video aún no está disponible.")
         return
 
     st.write(f"**Descripcion del modelo:** {analisis['descripcion']}")
@@ -689,11 +858,6 @@ def _analisis_del_detalle(detalle: dict) -> None:
             f"y la regla dice **{analisis['severidad'].capitalize()}**. Manda la "
             f"regla. Estas discrepancias son las que se revisan cada semana.")
 
-    st.caption(
-        f"Modelo {analisis['modelo'] or '?'} ({analisis['proveedor'] or '?'}), "
-        f"confianza {(analisis['confianza'] or 0):.0%}, "
-        f"{analisis['intentos'] or 1} intento(s). Es una ayuda para priorizar, "
-        f"no una conclusion: la decision es del supervisor.")
 
 
 def _personas_del_detalle(detalle: dict) -> None:
@@ -759,7 +923,7 @@ def _avisos_del_evento(evento: dict) -> None:
             if aviso["segundos_desde_analisis"] is not None:
                 segundos = float(aviso["segundos_desde_analisis"])
                 if aviso["dentro_del_criterio"]:
-                    st.caption(f"Salio {segundos:.1f} s despues del analisis.")
+                    st.caption(f"Enviado {segundos:.1f} s después del análisis.")
                 else:
                     # No se esconde: el criterio 3 se mide con lo que pasa de
                     # verdad, y un aviso tardio hay que verlo antes de que sea
@@ -788,7 +952,7 @@ def _clasificacion_del_evento(detalle: dict) -> None:
     pantallas esta equivocada.
     """
     st.divider()
-    st.markdown("**Clasificacion del evento**")
+    st.markdown("### Clasificación del evento")
 
     vigente = detalle["veredicto"]
     if vigente:
@@ -799,7 +963,7 @@ def _clasificacion_del_evento(detalle: dict) -> None:
                    f"{marca}, por {quien} el {cuando}")
         st.caption(f"\"{vigente['comentario']}\"")
     else:
-        st.info("Este evento todavia no se ha clasificado.")
+        st.info("Este evento aún no ha sido clasificado.")
 
     if len(detalle["decisiones"]) > 1:
         st.caption("Historial de decisiones")
@@ -827,12 +991,11 @@ def _clasificacion_del_evento(detalle: dict) -> None:
     clave_comentario = f"comentario_del_veredicto_{detalle['id']}"
     with st.form(f"clasificar_{detalle['id']}"):
         st.radio(
-            "Resultado de la revision", posibles, horizontal=True,
-            key=clave_estado,
-            format_func=lambda e: NOMBRE_DEL_ESTADO.get(e, e))
+            "Resultado de la revisión", posibles, key=clave_estado,
+            format_func=lambda e: NOMBRE_DE_LA_DECISION.get(e, NOMBRE_DEL_ESTADO.get(e, e)))
         st.text_area(
-            "Comentario", max_chars=1000, height=90, key=clave_comentario,
-            placeholder="En que se basa la decision. Minimo 10 caracteres.",
+            "Justificación", max_chars=1000, height=90, key=clave_comentario,
+            placeholder="Describa la evidencia que respalda la decisión (mínimo 10 caracteres).",
             help="Es lo que se leera cuando se revise este evento dentro de "
                  "unos meses, asi que conviene decir que se comprobo y donde.")
         # El envio es un callback y no el valor que devuelve el boton, por lo
@@ -841,7 +1004,7 @@ def _clasificacion_del_evento(detalle: dict) -> None:
         # pida el detalle y lo que se ve debajo ya es el estado nuevo.
         # Comprobandolo despues, la decision se veria una interaccion mas tarde.
         st.form_submit_button(
-            "Guardar clasificacion", type="primary",
+            "Registrar clasificación", type="primary",
             on_click=_guardar_clasificacion,
             args=(detalle["id"], clave_estado, clave_comentario))
 
@@ -903,13 +1066,17 @@ def panel_de_pesadas() -> None:
     bascula falla, y exige un motivo porque queda en la auditoria con el nombre
     de quien lo escribio.
     """
-    st.subheader("Registro de pesadas")
-    st.caption("Al cerrar la carga se lee la bascula por Modbus y el peso se guarda "
-               "con fecha, hora, orden y bascula, en kg con dos decimales (HU-01).")
+    st.markdown("### Registro de pesada")
 
     if puede_escribir():
+        # Los pasos van arriba pero se pintan despues de la consulta, para que
+        # reflejen la orden recien consultada en esta misma pasada.
+        lugar_de_los_pasos = st.empty()
         _consulta_de_la_orden()
         orden = st.session_state.get(ORDEN_CONSULTADA)
+        abierta = _carga_abierta_de(orden["numero_orden"]) if orden else None
+        with lugar_de_los_pasos.container():
+            _pasos_de_la_pesada(orden, abierta, st.session_state.get(ULTIMA_PESADA))
         if orden:
             _ficha_de_la_orden(orden)
             pesada = st.session_state.get(ULTIMA_PESADA)
@@ -918,7 +1085,7 @@ def panel_de_pesadas() -> None:
                 # para que nadie vuelva a pulsar "Marcar inicio" creyendo que la
                 # pesada no se guardo.
                 _resultado_de_la_pesada(pesada)
-                if st.button("Registrar otra pesada"):
+                if st.button("Registrar nueva pesada"):
                     st.session_state.pop(ULTIMA_PESADA, None)
                     st.rerun()
             else:
@@ -933,11 +1100,24 @@ def panel_de_pesadas() -> None:
     _historial_de_pesadas()
 
 
+def _pasos_de_la_pesada(orden: dict | None, abierta: dict | None,
+                        pesada: dict | None) -> None:
+    """Orden, carga y peso: donde esta el operador y que le falta."""
+    hecha = bool(pesada and orden and pesada["numero_orden"] == orden["numero_orden"])
+    estados = ["hecho" if orden else "actual",
+               "hecho" if (abierta or hecha) else ("actual" if orden else ""),
+               "hecho" if hecha else ("actual" if abierta else "")]
+    nombres = ["1 · Orden", "2 · Carga", "3 · Pesaje"]
+    celdas = "".join(f'<div class="q-pp {e}">{"✓ " if e == "hecho" else ""}{n}</div>'
+                     for n, e in zip(nombres, estados))
+    st.markdown(f'<div class="q-pasos-pesada">{celdas}</div>', unsafe_allow_html=True)
+
+
 def _consulta_de_la_orden() -> None:
     with st.form("consultar_orden"):
         columnas = st.columns([3, 1])
         numero = columnas[0].text_input(
-            "Numero de orden de despacho", placeholder="ORD-2026-0001",
+            "Número de orden de despacho", placeholder="ORD-2026-0001",
             value=(st.session_state.get(ORDEN_CONSULTADA) or {}).get("numero_orden", ""))
         columnas[1].write("")      # alinea el boton con la caja de texto
         consultar = columnas[1].form_submit_button("Consultar orden", type="primary",
@@ -948,7 +1128,7 @@ def _consulta_de_la_orden() -> None:
     st.session_state.pop(ULTIMA_PESADA, None)
     st.session_state.pop(ERROR_DE_PESADA, None)
     if not numero:
-        st.warning("Escribe el numero de orden.")
+        st.warning("Ingrese el número de orden.")
         return
     respuesta = pedir("GET", f"/ordenes/{numero}")
     if respuesta.status_code == 200:
@@ -967,7 +1147,7 @@ def _ficha_de_la_orden(orden: dict) -> None:
     cifras[0].metric("Peso esperado", f"{float(orden['peso_esperado_kg']):,.2f} kg")
     cifras[1].metric("Sacos esperados", orden["sacos_esperados"])
     cifras[2].metric("Fecha de la orden", orden["fecha"])
-    st.caption("Datos del ERP (HU-02). Copia local sincronizada el "
+    st.caption("Datos del ERP, actualizados el "
                f"{orden['sincronizado_en'][:19].replace('T', ' ')}.")
 
 
@@ -983,17 +1163,15 @@ def _carga_abierta_de(numero_orden: str) -> dict | None:
 
 def _inicio_de_la_carga(orden: dict) -> None:
     """Marca de inicio. Sin ella el clip de HU-06 solo cubre los 5 min previos."""
-    st.markdown("##### 1. Inicio de la carga")
+    st.markdown("##### Carga")
     abierta = _carga_abierta_de(orden["numero_orden"])
     if abierta:
-        inicio = dt.datetime.fromisoformat(abierta["inicio"])
-        minutos = max(0, int((dt.datetime.now() - inicio).total_seconds() // 60))
-        st.success(f"Carga abierta desde las {inicio:%H:%M} ({minutos} min) en la "
-                   f"bascula {abierta['bascula_id']}.")
+        _reloj_de_la_carga(dt.datetime.fromisoformat(abierta["inicio"]),
+                           abierta["bascula_id"])
         return
-    st.caption("Marcalo cuando el camion entra a la rampa: el video del evento se "
-               "recorta desde 5 minutos antes de este momento.")
-    if st.button("Marcar inicio de carga"):
+    st.caption("Inicie la carga al subir el primer saco. El video del evento "
+               "incluirá los 5 minutos previos.")
+    if st.button("Iniciar carga", type="primary"):
         respuesta = pedir("POST", f"/cargas/{orden['numero_orden']}/inicio", json={})
         if respuesta.status_code == 201:
             st.rerun()
@@ -1001,36 +1179,77 @@ def _inicio_de_la_carga(orden: dict) -> None:
             st.error(detalle_del_error(respuesta))
 
 
-def _cierre_de_la_carga(orden: dict) -> None:
-    st.markdown("##### 2. Cierre de la carga y pesada")
-    origen = st.radio(
-        "Origen del peso", ["Leer la bascula", "Registro manual"], horizontal=True,
-        help="El registro manual es para cuando la bascula no responde. Queda "
-             "marcado como manual y con tu nombre en la auditoria.")
-    manual = origen == "Registro manual"
+@st.fragment(run_every=1)
+def _reloj_de_la_carga(inicio: dt.datetime, bascula: str) -> None:
+    """El tiempo de carga avanza solo, sin pulsar Actualizar.
 
-    with st.form("registrar_pesada"):
-        peso = motivo = None
-        if manual:
-            columnas = st.columns([1, 2])
-            peso = columnas[0].number_input(
-                "Peso real (kg)", min_value=0.0, max_value=999999.99, step=10.0,
-                value=float(orden["peso_esperado_kg"]), format="%.2f")
-            motivo = columnas[1].text_input(
-                "Motivo del registro manual",
-                placeholder="Bascula sin respuesta, pesado en la balanza auxiliar")
-        else:
-            st.caption("Se lee el peso estable de la bascula por Modbus. Si no responde "
-                       "en 5 s, el fallo queda registrado en Salud (HU-01, criterio 2).")
-        registrar = st.form_submit_button("Registrar pesada", type="primary")
+    Es un fragmento: Streamlit lo vuelve a dibujar cada segundo sin repetir el
+    resto de la pagina (ni sus llamadas a la API).
+    """
+    segundos = max(0, int((dt.datetime.now() - inicio).total_seconds()))
+    with st.container(border=True):
+        izquierda, derecha = st.columns([3, 2], vertical_alignment="center")
+        izquierda.markdown(
+            f'<span class="q-vivo"><i></i>Carga en curso desde las {inicio:%H:%M} '
+            f'· báscula {bascula}</span>', unsafe_allow_html=True)
+        izquierda.caption("Al finalizar la carga, registre el pesaje a continuación.")
+        derecha.markdown(f'<div class="q-reloj">{segundos // 60:02d}:{segundos % 60:02d}</div>',
+                         unsafe_allow_html=True)
+
+
+def _aviso_previo(orden: dict, peso: float) -> None:
+    """Antes de guardar, dice si esa pesada va a abrir un caso. RN-01."""
+    esperado = float(orden["peso_esperado_kg"])
+    respuesta = pedir("GET", f"/configuracion/{orden['producto']}/aplicada",
+                      params={"peso_esperado_kg": esperado})
+    if respuesta.status_code != 200:
+        return
+    tolerancia = float(respuesta.json()["tolerancia_efectiva_kg"])
+    diferencia = peso - esperado
+    if abs(diferencia) > tolerancia:
+        st.error(f"Diferencia de {diferencia:+,.0f} kg: supera la tolerancia de "
+                 f"{tolerancia:,.0f} kg. Al registrar la pesada se generará un evento de "
+                 "discrepancia y se iniciará el análisis del video.")
+    else:
+        st.success(f"Diferencia de {diferencia:+,.0f} kg: dentro de la tolerancia de "
+                   f"{tolerancia:,.0f} kg. No se generará ningún evento.")
+
+
+def _cierre_de_la_carga(orden: dict) -> None:
+    st.markdown("##### Pesaje")
+    origen = st.segmented_control(
+        "Origen del peso", ["Báscula", "Ingreso manual"],
+        default="Báscula",
+        help="El ingreso manual es para cuando la báscula no responde. Queda "
+             "identificado como manual, con su usuario, en la auditoría.")
+    manual = origen == "Ingreso manual"
+
+    peso = motivo = None
+    if manual:
+        st.caption("Utilice el ingreso manual solo si la báscula no responde. El "
+                   "registro queda identificado como manual, con su usuario y el motivo.")
+        peso = st.number_input(
+            "Peso real (kg)", min_value=0.0, max_value=999999.99, step=10.0,
+            value=float(orden["peso_esperado_kg"]), format="%.2f")
+        motivo = st.text_area(
+            "Motivo del ingreso manual", height=80,
+            placeholder="Ej.: báscula sin respuesta; pesaje en balanza auxiliar")
+        faltan = MINIMO_MOTIVO_MANUAL - len((motivo or "").strip())
+        st.caption(f"Mínimo {MINIMO_MOTIVO_MANUAL} caracteres (faltan {faltan})."
+                   if faltan > 0 else "Motivo válido.")
+        _aviso_previo(orden, peso)
+    else:
+        st.caption("Se registra la lectura estable de la báscula. Si no responde en 5 s, "
+                   "la falla queda registrada en Estado del sistema.")
+    registrar = st.button("Registrar pesada", type="primary")
 
     if not registrar:
         return
     cuerpo = {"numero_orden": orden["numero_orden"]}
     if manual:
         if len((motivo or "").strip()) < MINIMO_MOTIVO_MANUAL:
-            st.warning(f"Explica el motivo del registro manual "
-                       f"(al menos {MINIMO_MOTIVO_MANUAL} caracteres).")
+            st.warning(f"Indique el motivo del ingreso manual "
+                       f"(mínimo {MINIMO_MOTIVO_MANUAL} caracteres).")
             return
         cuerpo |= {"peso_real_kg": round(peso, 2), "motivo_manual": motivo.strip()}
 
@@ -1042,8 +1261,8 @@ def _cierre_de_la_carga(orden: dict) -> None:
         st.session_state[ULTIMA_PESADA] = respuesta.json()
     elif respuesta.status_code == 503:
         st.session_state[ERROR_DE_PESADA] = (
-            "La bascula no respondio. El fallo quedo registrado en la pestana Salud. "
-            "Puedes reintentar, o registrar el peso a mano eligiendo 'Registro manual'. "
+            "La báscula no respondió. La falla quedó registrada en Estado del sistema. "
+            "Puede reintentar o registrar el peso mediante 'Ingreso manual'. "
             f"Detalle: {detalle_del_error(respuesta)}")
     else:
         st.session_state[ERROR_DE_PESADA] = detalle_del_error(respuesta)
@@ -1119,9 +1338,9 @@ def panel_de_ordenes() -> None:
     la respuesta del ERP quede junto a la pesada: aqui se ve con que peso y con
     cuantos sacos esperados se juzgo cada una.
     """
-    st.subheader("Ordenes de despacho")
-    st.caption("Se consultan al ERP por API REST y se guarda una copia local, que "
-               "tambien sirve de respaldo si el ERP no contesta (HU-02).")
+    st.subheader("Órdenes de despacho")
+    st.caption("Órdenes obtenidas del ERP. Se conserva una copia local por si el ERP "
+               "no está disponible.")
 
     with st.form("consultar_erp"):
         columnas = st.columns([3, 2, 1])
@@ -1215,9 +1434,9 @@ def panel_de_video() -> None:
 
 
 def _grabacion_continua() -> None:
-    st.subheader("Grabacion continua")
-    st.caption("Cada camara se graba en segmentos de 1 minuto en un buffer circular de "
-               "al menos 72 h. Si una camara se cae, queda registrado aqui (HU-05).")
+    st.subheader("Grabación continua")
+    st.caption("Las cámaras graban de forma continua y se conservan al menos las "
+               "últimas 72 horas. Las interrupciones se registran aquí.")
     respuesta = pedir("GET", "/salud")
     if respuesta.status_code != 200:
         st.error(detalle_del_error(respuesta))
@@ -1289,10 +1508,9 @@ def _o_guion(valor, signo: bool = False) -> str:
 
 def _clips_y_conteo() -> None:
     st.subheader("Clips y conteo de sacos")
-    st.caption("Por cada evento se recorta el video desde 5 min antes del inicio de la "
-               "carga hasta 2 min despues del cierre y se guarda en el almacen (HU-06). "
-               "YOLO cuenta los sacos que cruzan la linea de carga y la diferencia con la "
-               "orden se guarda en el evento (HU-07).")
+    st.caption("Por cada evento se guarda el video desde 5 minutos antes del inicio de "
+               "la carga hasta 2 minutos después del cierre, y se cuentan los sacos que "
+               "cruzan la línea de carga.")
     respuesta = pedir("GET", "/eventos", params={"limite": 50})
     if respuesta.status_code != 200:
         st.error(detalle_del_error(respuesta))
@@ -1330,14 +1548,13 @@ def _clips_y_conteo() -> None:
     cifras[0].metric("Eventos", len(tabla))
     cifras[1].metric("Con clip", int((tabla["Clip"] == "Vinculado").sum()))
     cifras[2].metric("Sin clip", int((tabla["Clip"] == "Sin clip").sum()),
-                     help="Falto video de mas de la mitad de la ventana: el buffer no "
-                          "cubria esa carga o la camara estaba caida (HU-06, criterio 3).")
+                     help="Faltó video de más de la mitad de la carga: no había "
+                          "grabación de ese periodo o la cámara estaba fuera de servicio.")
     cifras[3].metric("Con conteo", int((tabla["Conteo"] == "Contado").sum()))
 
     st.dataframe(tabla, use_container_width=True, hide_index=True)
-    st.caption("El video de cada evento se reproduce en la pestana Eventos, en el detalle "
-               "del evento. La precision del contador (criterio 2 de HU-07) se mide aparte, "
-               "con el set de validacion: ver yolo/reporte_validacion.txt.")
+    st.caption("El video de cada evento se reproduce en la pestaña Eventos, dentro del "
+               "detalle del evento.")
 
 
 # -------------------------------------------------------------- tolerancias
@@ -1349,7 +1566,7 @@ def panel_de_tolerancias(editable: bool) -> None:
     conseguiria que preguntara por chat cada vez.
     """
     st.subheader("Tolerancias por producto")
-    st.caption("Se aplica la mas restrictiva entre los kg y el porcentaje (RN-01). "
+    st.caption("Se aplica la más restrictiva entre la tolerancia en kg y la porcentual. "
                "Cada cambio queda registrado con usuario y fecha.")
 
     respuesta = pedir("GET", "/configuracion")
@@ -1406,7 +1623,7 @@ def panel_de_tolerancias(editable: bool) -> None:
                     f"**{datos['tolerancia_efectiva_kg']} kg** de diferencia "
                     f"(el porcentaje equivale a {datos['equivalente_del_pct_kg']} kg).")
 
-            st.caption("Canales de alerta por severidad (los edita HU-10):")
+            st.caption("Canales de alerta por severidad:")
             st.json(fila["canales_por_severidad"], expanded=False)
 
             cambios = pedir("GET", f"/configuracion/{fila['producto']}/historial")
@@ -1483,16 +1700,37 @@ if "token" not in st.session_state:
 usuario_actual = st.session_state["usuario"]
 
 with st.sidebar:
+    st.markdown("### QUINOR")
+    st.caption("Control de despacho")
     st.write(f"**{usuario_actual['nombre']}**")
-    st.caption(f"{usuario_actual['correo']} - rol {usuario_actual['rol']}")
-    if st.button("Salir"):
+    st.caption(f"{usuario_actual['correo']} · {usuario_actual['rol']}")
+    if st.button("Actualizar", type="primary", use_container_width=True):
+        st.rerun()
+    if st.button("Cerrar sesión", use_container_width=True):
         cerrar_sesion()
         st.rerun()
-    if st.button("Actualizar", type="primary"):
-        st.rerun()
 
-st.title("QUINOR S.A.C. - Control de despacho")
-st.caption("Alternativa 1, Sprint 1.")
+
+def _cabecera() -> None:
+    """Titulo y lo unico que importa al entrar: cuantos eventos esperan revision."""
+    respuesta = pedir("GET", "/eventos/bandeja")
+    abiertos = ((respuesta.json().get("resumen") or {}).get("abiertos")
+                if respuesta.status_code == 200 else None)
+    if abiertos:
+        estado = (f'<span class="q-oro">{abiertos} evento{"s" if abiertos != 1 else ""}</span>'
+                  f'<span class="q-tenue"> pendiente{"s" if abiertos != 1 else ""} de revisión</span>')
+    elif abiertos == 0:
+        estado = '<span class="q-tenue">Sin eventos pendientes de revisión</span>'
+    else:
+        estado = ""
+    st.markdown(
+        f'<span class="q-vivo"><i></i>Rampa 1 · En línea · '
+        f'{dt.datetime.now():%d/%m/%Y %H:%M}</span>'
+        f'<div class="q-saludo">Control de despacho<br>{estado}</div>',
+        unsafe_allow_html=True)
+
+
+_cabecera()
 
 # El rol Consulta no administra nada: la API lo rechaza con 403 y la pantalla
 # ni siquiera ofrece la accion, para no invitar a un error que ya esta cerrado.
@@ -1502,7 +1740,8 @@ es_admin = usuario_actual["rol"] == "administrador"
 # Despues van las pestanas en el orden del despacho: la pesada donde nace cada
 # evento (HU-01, HU-03), la orden contra la que se juzga (HU-02) y el video que
 # lo explica (HU-05 a HU-07).
-PESTANAS = ["Eventos", "Pesadas", "Ordenes", "Video", "Salud", "Tolerancias", "Mis tokens"]
+PESTANAS = ["Eventos", "Registro de pesada", "Órdenes", "Cámaras", "Estado del sistema",
+            "Tolerancias", "Tokens de acceso"]
 if es_admin:
     (discrepancias, pesadas, ordenes, video, salud, tolerancias, tokens,
      gente) = st.tabs(PESTANAS + ["Usuarios"])

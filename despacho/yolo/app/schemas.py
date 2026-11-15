@@ -108,6 +108,12 @@ class RespuestaDeAnalisis(BaseModel):
     sacos_esperados: int | None = None
     # Negativa es faltante, el mismo criterio de signo que la diferencia de peso.
     diferencia_sacos: int | None = None
+    # "linea" (HU-07) o "pallets". Con "pallets", sacos_contados es una
+    # estimacion: pallets_contados por sacos_por_pallet. Se dice en la respuesta
+    # para que nadie lea un 400 estimado como 400 sacos vistos uno a uno.
+    modo_conteo: str = "linea"
+    pallets_contados: int | None = None
+    sacos_por_pallet: int | None = None
     # HU-08. `personas_detectadas` es el conteo suelto que ya usaba HU-07;
     # `presencia` es el detalle que pide el criterio 2.
     personas_detectadas: int
@@ -144,4 +150,7 @@ class RespuestaDeSalud(BaseModel):
     # porque una zona mal calibrada da cargas sin nadie en rampa, y eso desde
     # fuera se ve igual que una rampa vacia de verdad.
     zona: list[float] = [0.0, 0.0, 1.0, 1.0]
+    modo_conteo: str = "linea"
+    # Solo con modo "pallets": donde se cuentan las llegadas.
+    zona_pallets: list[float] | None = None
     mensaje: str | None = None

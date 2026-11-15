@@ -456,6 +456,35 @@ def test_los_intentos_se_acaban(ajustes_con_vlm, motor, servicio_vlm, cliente_s3
     assert interpretacion.pendientes_de_interpretar(motor, ajustes_con_vlm) == []
 
 
+def test_si_el_modelo_fallo_con_severidad_de_regla_se_reintenta(
+        ajustes_con_vlm, motor, servicio_vlm, cliente_s3):
+    """El proveedor responde pero agota sus intentos: la severidad de la regla
+    se guarda igual y el evento queda en Pendiente de analisis. Antes, por tener
+    severidad, el reintento no lo volvia a tomar nunca (visto el 05/11/2026)."""
+    sembrado = sembrar_evento(motor)
+    with motor.begin() as conexion:
+        conexion.execute(tablas.evento.update()
+                         .where(tablas.evento.c.id == sembrado["evento_id"])
+                         .values(sacos_contados=398, diferencia_sacos=-2))
+    original = dict(servicio_vlm.respuesta)
+    servicio_vlm.respuesta.update({"fallo": True, "motivo_del_fallo": "Connection refused",
+                                   "intentos": 3, "analisis": None})
+    interpretacion.interpretar(motor, ajustes_con_vlm, fila_de(sembrado),
+                               conteo=conteo_con_fotogramas(), cliente=cliente_s3)
+    evento = leer_evento(motor, sembrado["evento_id"])
+    assert evento["estado"] == PENDIENTE_ANALISIS
+    assert evento["severidad"] is not None
+
+    pendientes = interpretacion.pendientes_de_interpretar(motor, ajustes_con_vlm)
+    assert [f["id"] for f in pendientes] == [sembrado["evento_id"]]
+
+    servicio_vlm.respuesta.clear()
+    servicio_vlm.respuesta.update(original)
+    interpretacion.procesar_pendientes(motor, ajustes_con_vlm, cliente=cliente_s3)
+    assert leer_evento(motor, sembrado["evento_id"])["estado"] == "pendiente"
+    assert interpretacion.pendientes_de_interpretar(motor, ajustes_con_vlm) == []
+
+
 def test_el_reintento_baja_los_fotogramas_del_almacen(ajustes_con_vlm, motor,
                                                       servicio_vlm, cliente_s3,
                                                       tmp_path):

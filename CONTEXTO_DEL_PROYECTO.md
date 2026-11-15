@@ -5,7 +5,10 @@
 > que, y lo que falta. Esta escrito para que una sesion que empieza de cero
 > pueda continuar sin repetir trabajo ni contradecir lo ya construido.
 >
-> Ultima actualizacion: **01/11/2026**. La base paso a **MySQL 8 en AWS
+> Ultima actualizacion: **13/11/2026**: el servicio YOLO puede contar
+> **pallets** en lugar de sacos sueltos (`YOLO_MODO_CONTEO=pallets`, seccion 12).
+> El 05/11/2026 las camaras simuladas pasaron a poder
+> publicar videos reales (seccion 13). Antes, el 01/11/2026, la base paso a **MySQL 8 en AWS
 > Lightsail** y los clips a **Amazon S3** (bucket de Lightsail): la MariaDB y el
 > MinIO del compose quedaron apagados. El entorno corre tambien en una maquina
 > virtual de Azure (seccion 13). **El MVP de 14 historias esta completo** desde
@@ -491,13 +494,13 @@ suites corren tambien contra MariaDB, y el codigo debe servir en los dos.
 
 ---
 
-## 10. Pruebas: 1350 en total, 100 % de cobertura
+## 10. Pruebas: 1378 en total, 100 % de cobertura
 
 | Servicio | Pruebas | Cobertura | Contra que corre |
 |---|---|---|---|
 | `api` | 520 | 100 % | MySQL y MariaDB reales, Modbus en proceso, ERP con respx, firma de MinIO sin red |
 | `grabador` | 279 | 100 % | MySQL, ffmpeg, RTSP mediamtx, S3, tres servicios HTTP falsos |
-| `yolo` | 222 | 100 % | Modelo entrenado real, video real generado |
+| `yolo` | 250 | 100 % | Modelo entrenado real, video real generado |
 | `vlm` | 185 | 100 % | Stub que habla el dialecto del proveedor por HTTP |
 | `notificaciones` | 144 | 100 % | MySQL y un servidor SMTP real (aiosmtpd) |
 
@@ -602,6 +605,19 @@ para que solo cambie quien llama.
 tabla `modelo_version` tambien. Falta el dataset de planta: lo que hay es
 sintetico, y el reporte de validacion lo dice con todas las letras.
 
+**Conteo por pallets (13/11/2026), adelanto de HU-19.** Con el primer video real
+de la rampa (camara alta y lejana) los sacos sueltos no se detectan: ocupan unos
+pocos pixeles. Se entreno en Google Colab un modelo `pallet` + `person`
+(`modelos/pallets.pt`, etiquetado automatico con YOLO-World) y el servicio YOLO
+gano un segundo modo, `YOLO_MODO_CONTEO=pallets`: cuenta los pallets que llegan
+a `ZONA_PALLETS` y estima sacos = pallets x 40. El contrato no cambia para el
+grabador (`sacos_contados` y `diferencia_sacos` siguen ahi) y agrega
+`modo_conteo`, `pallets_contados` y `sacos_por_pallet`. Detalle y reglas en
+`despacho/yolo/README.md`. Pendiente: calibrar `ZONA_PALLETS` con un clip real,
+medir la precision contra un conteo manual, y decidir si el dashboard muestra
+"pallets" ademas de sacos. Las etiquetas del modelo son automaticas: para
+reportar metricas en la tesis hay que corregirlas a mano y reentrenar.
+
 ### Pendientes que dependen de QUINOR, no del desarrollo
 
 1. **Clave de un proveedor de vision-lenguaje** (Anthropic u OpenAI). Todo esta
@@ -659,6 +675,24 @@ planta: bascula Modbus, ERP falso, dos camaras publicando por RTSP, mailpit en
 `localhost:8025` para leer los correos, y el stub del proveedor de IA. Redis
 espera a HU-17 (perfil `sprint2`).
 
+**Dashboard "sala de control" (05/11/2026).** Tema oscuro en
+`despacho/api/.streamlit/config.toml` y estilos en `ESTILO` de
+`dashboard/app.py`. La bandeja muestra un evento por tarjeta, con la barra de
+pasos Pesada, Video, Conteo y Analisis, y un boton Revisar que abre su detalle;
+la tabla sigue en "Ver como tabla". La pesada marca los pasos Orden, Carga y
+Pesaje, el reloj de carga avanza solo (`st.fragment(run_every=1)`) y el
+ingreso manual avisa antes de registrar si se generara un evento. Los textos de
+la interfaz van en registro formal (usted) y con tildes. Las pestanas se llaman
+Eventos, Registro de pesada, Órdenes, Cámaras, Estado del sistema, Tolerancias,
+Tokens de acceso y Usuarios: el manual de usuario aun usa los nombres
+anteriores.
+
+**Videos reales sin camaras.** Las camaras simuladas publican en bucle los
+videos que haya en `despacho/api/videos/rampa-01` y `rampa-02` (o en la carpeta
+de `CAMERA_VIDEOS_DIR`); sin videos, las barras de colores de siempre. Todo el
+resto del sistema los trata como una camara de planta. Uso y advertencias en
+`despacho/api/videos/LEEME.md`; los videos no van a Git.
+
 Para volver a la base y al almacen locales, sin nube:
 
 ```bash
@@ -713,6 +747,27 @@ cd ~/quinor && git pull && cd despacho/api && docker compose up -d --build
 ```
 
 - **La IP publica cambia** cada vez que se enciende: mirarla en el portal.
+- **Azure corta en silencio las conexiones TCP ociosas a los 4 minutos.** Una
+  conexion del pool hacia Lightsail que pasaba ese tiempo sin uso quedaba muerta
+  sin saberlo, y la siguiente consulta se colgaba (en el dashboard,
+  `httpx.ReadTimeout` al abrir Usuarios). Desde el 05/11/2026 `api`, `grabador`
+  y `notificaciones` reciclan sus conexiones a los 240 s y PyMySQL tiene limites
+  de tiempo (`RECICLAR_SEGUNDOS` y `LIMITES_DE_CONEXION` en cada `crear_motor`).
+  No subir el reciclado por encima de 4 minutos.
+- **El stub del proveedor de IA escuchaba solo en 127.0.0.1** dentro de su
+  contenedor, y el servicio `vlm` recibia `Connection refused`: los eventos
+  quedaban en Pendiente de analisis y sin fotogramas. Desde el 05/11/2026
+  `sim/vlm_stub.py` escucha en `0.0.0.0` cuando corre como servicio.
+- **La descripcion fallida no se reintentaba.** Cuando el proveedor falla, la
+  severidad de la regla se guarda igual y el evento queda en Pendiente de
+  analisis; el reintento solo buscaba eventos sin severidad, asi que nunca los
+  volvia a tomar. Desde el 05/11/2026 `pendientes_de_interpretar` toma tambien
+  los que estan en Pendiente de analisis (prueba en `test_interpretacion.py`).
+- **Sin GPU, YOLO tarda mas que el video.** Un clip de 9 minutos tomo unos 13
+  minutos en la D4s_v3. El grabador espera `YOLO_TIMEOUT_SECONDS` (600 por
+  defecto); en esta maquina conviene 2400 en el `.env`, o subir
+  `YOLO_FRAME_STRIDE`. Si el grabador se cansa de esperar, YOLO sigue
+  analizando igual: reiniciar `yolo` antes de reintentar evita analisis dobles.
 - Apagada, la maquina no cobra procesador, solo el disco (unos 5 USD al mes).
 - Para mostrarla a alguien sin tunel, abrir el puerto 8501 en Redes **solo para
   su IP**, y borrar la regla despues. No abrir 3306, 8000 ni 8025.

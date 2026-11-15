@@ -6,3 +6,6 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 htmlcov/
+
+# Los videos de prueba no van dentro de la imagen de la API
+videos/

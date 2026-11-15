@@ -96,3 +96,18 @@ def test_cuando_si_se_invoca_la_explicacion_trae_las_cifras():
 
 def test_sin_motivos_no_hay_codigo_de_invocacion():
     assert decidir(0, 0, False).codigo == NADA_QUE_EXPLICAR
+
+
+def test_el_stub_del_compose_escucha_en_todas_las_interfaces():
+    """En Docker, el servicio vlm llama al stub desde otro contenedor. Si el stub
+    escucha solo en 127.0.0.1, cada llamada es "Connection refused" y todos los
+    eventos quedan en Pendiente de analisis (visto el 05/11/2026)."""
+    from sim.vlm_stub import arrancar
+
+    servidor, _, url = arrancar(host="0.0.0.0")
+    try:
+        assert servidor.server_address[0] == "0.0.0.0"
+        assert url.startswith("http://127.0.0.1:")
+    finally:
+        servidor.shutdown()
+        servidor.server_close()

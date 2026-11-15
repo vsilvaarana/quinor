@@ -1,0 +1,19 @@
+# Tema claro del dashboard (13/11/2026). El rediseno del 05/11/2026 lo dejo en
+# oscuro, "sala de control"; se paso a claro a pedido del usuario: se lee mejor
+# en una oficina iluminada y al imprimir. Verde quinua como color principal y
+# fondo crema, la paleta del prototipo de UX.
+# Streamlit lee este archivo desde la carpeta donde se lanza: el compose corre
+# `streamlit run dashboard/app.py` desde despacho/api, asi que va aqui.
+[theme]
+base = "light"
+primaryColor = "#2E7D4F"
+backgroundColor = "#FAF8F2"
+secondaryBackgroundColor = "#EFEBDF"
+textColor = "#1E2A23"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

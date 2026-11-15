@@ -164,6 +164,121 @@ class ContadorDeLinea:
         return self.entrantes - self.salientes
 
 
+class ContadorDePallets:
+    """Cuenta los pallets que llegan a la zona de carga, una vez cada uno.
+
+    Es la alternativa a la linea cuando la camara no distingue sacos sueltos
+    (ver MODOS_DE_CONTEO en app/config.py). Cruzar una linea no sirve aqui: el
+    montacargas deja el pallet junto al camion y los operarios lo vacian a mano,
+    asi que el pallet llega y se queda, no pasa. Lo que se cuenta es la llegada.
+
+    Tres reglas, y cada una evita un error concreto:
+
+    - Hay que quedarse `permanencia_s` en la zona. Un pallet que el montacargas
+      solo cruza camino de otra rampa no se cargo en este camion.
+    - Lo que ya estaba en la zona en los primeros `ignorar_inicio_s` no cuenta:
+      llego antes del clip, y contarlo inventaria 40 sacos.
+    - Un identificador nuevo a menos de `radio` de un pallet conocido y visto
+      hace poco es ese mismo pallet. ByteTrack le cambia el numero en cuanto un
+      operario pasa por delante; sin esta regla, cada oclusion seria un pallet.
+
+    Igual que ContadorDeLinea, no sabe nada de YOLO ni de video, y por eso la
+    regla se prueba sin GPU.
+    """
+
+    def __init__(self, zona: tuple[float, float, float, float], clase: str,
+                 fps: float, sacos_por_pallet: int = 40,
+                 permanencia_s: float = 2.0, ignorar_inicio_s: float = 3.0,
+                 radio: float = 0.06, memoria_s: float = 6.0):
+        self.x1, self.y1, self.x2, self.y2 = zona
+        self.clase = clase
+        # Sin fps no hay segundos; 15 es el de las camaras de la rampa. Mejor una
+        # escala aproximada que dividir por cero o contar todo en el fotograma 0.
+        self.fps = fps if fps and fps > 0 else 15.0
+        self.sacos_por_pallet = sacos_por_pallet
+        self.permanencia = permanencia_s * self.fps
+        self.inicio = ignorar_inicio_s * self.fps
+        self.radio2 = radio * radio
+        self.memoria = memoria_s * self.fps
+        # id -> fotograma en que entro en la zona (None si esta fuera)
+        self.entro_en: dict[int, int | None] = {}
+        # id -> "contado", "previo" o "alias". Sin estado: aun puede contar.
+        self.estado: dict[int, str] = {}
+        self.posicion: dict[int, tuple[float, float, int]] = {}
+        self.llegadas: list[Cruce] = []
+
+    def en_zona(self, punto: Punto) -> bool:
+        return self.x1 <= punto.x <= self.x2 and self.y1 <= punto.y <= self.y2
+
+    def _es_uno_conocido(self, punto: Punto, fotograma: int) -> bool:
+        # Solo sirven de referencia los que ya tienen estado (contados, previos o
+        # alias). Si el rastreador cambia el numero a un pallet que aun no
+        # cumplio su permanencia, el numero nuevo tiene que poder contarlo: el
+        # viejo no sumo nada, y tomarlo como alias dejaria ese pallet sin contar.
+        for otro, (x, y, visto) in self.posicion.items():
+            if otro not in self.estado:
+                continue
+            if fotograma - visto <= self.memoria and \
+                    (x - punto.x) ** 2 + (y - punto.y) ** 2 <= self.radio2:
+                return True
+        return False
+
+    def procesar(self, fotograma: int, detecciones: list[Deteccion]) -> list[Cruce]:
+        """Alimenta un fotograma y devuelve los pallets que se contaron en el.
+
+        Devuelve Cruce con sentido +1 para que la seleccion de fotogramas clave
+        de HU-09 los trate como el primer y el ultimo saco de la carga.
+        """
+        nuevas: list[Cruce] = []
+        for deteccion in detecciones:
+            if deteccion.clase != self.clase:
+                continue
+            ident, punto = deteccion.id_seguimiento, deteccion.centro
+            dentro = self.en_zona(punto)
+            if ident not in self.posicion:
+                if fotograma < self.inicio and dentro:
+                    self.estado[ident] = "previo"
+                elif self._es_uno_conocido(punto, fotograma):
+                    self.estado[ident] = "alias"
+            self.posicion[ident] = (punto.x, punto.y, fotograma)
+            if ident in self.estado:
+                continue
+            if not dentro:
+                # Salio antes de cumplir la permanencia: se empieza de cero.
+                self.entro_en[ident] = None
+                continue
+            if self.entro_en.get(ident) is None:
+                self.entro_en[ident] = fotograma
+            # Se mide en fotogramas de video, no en detecciones: con un salto de
+            # fotogramas mayor que 1 contar apariciones alargaria la espera.
+            if fotograma - self.entro_en[ident] >= self.permanencia:
+                self.estado[ident] = "contado"
+                llegada = Cruce(id_seguimiento=ident, fotograma=fotograma, sentido=1)
+                self.llegadas.append(llegada)
+                nuevas.append(llegada)
+        return nuevas
+
+    @property
+    def pallets(self) -> int:
+        return len(self.llegadas)
+
+    @property
+    def entrantes(self) -> int:
+        """Sacos estimados: pallets por sacos de un pallet completo."""
+        return self.pallets * self.sacos_por_pallet
+
+    @property
+    def salientes(self) -> int:
+        """Siempre cero. Un pallet que se va no dice cuantos sacos se llevo, y
+        la RN-04 trata un saliente como severidad Alta: inventarlo seria peor
+        que no informarlo."""
+        return 0
+
+    @property
+    def total(self) -> int:
+        return self.entrantes
+
+
 def precision_de_conteo(contados: int, reales: int) -> float:
     """Precision de una carga, en porcentaje. Criterio 2 y KPI del apartado 3.
 

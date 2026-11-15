@@ -150,6 +150,48 @@ POST /analisis/yolo
 `GET /` es publico y sirve de healthcheck. `GET /salud` y `POST /analisis/yolo`
 piden `X-API-Key` cuando `YOLO_API_KEY` esta configurada.
 
+## Conteo por pallets (13/11/2026)
+
+El primer video real de la rampa mostro que la camara de planta esta alta y
+lejos: un saco al hombro de un operario ocupa unos pocos pixeles. Ni el modelo
+sintetico ni un detector generico (YOLO-World) lo encontraban; en todo un video
+salieron 9 sacos. Un pallet, en cambio, si se ve.
+
+Con `YOLO_MODO_CONTEO=pallets` el servicio cuenta otra cosa:
+
+- **Que se cuenta:** los pallets que **llegan** a `ZONA_PALLETS` (donde el
+  montacargas los deja junto al camion) y se quedan al menos
+  `PALLET_PERMANENCIA_SEGUNDOS`. No hay linea: el pallet no cruza nada, llega,
+  se vacia a mano y se queda ahi.
+- **Sacos:** `sacos_contados = pallets_contados x SACOS_POR_PALLET` (40). Es una
+  **estimacion** y la respuesta lo dice con `modo_conteo`, `pallets_contados` y
+  `sacos_por_pallet`. `diferencia_sacos` se calcula igual que siempre, asi que el
+  grabador, la RN-04 y el dashboard no cambian: un pallet que falta son -40.
+- **Lo que no ve:** un pallet al que le faltan sacos por dentro. Eso lo sigue
+  cazando la bascula, que es la que dispara el evento.
+- `sacos_salientes` es siempre 0: un pallet que se va no dice cuantos sacos se
+  llevo, y la RN-04 trata un saliente como severidad Alta.
+
+Tres reglas evitan los errores que costarian 40 sacos de golpe
+(`ContadorDePallets` en `app/conteo.py`):
+
+| Regla | Evita |
+|---|---|
+| Quedarse `PALLET_PERMANENCIA_SEGUNDOS` en la zona | Contar un pallet que el montacargas solo cruza |
+| Ignorar lo que ya estaba en los primeros `PALLET_IGNORAR_INICIO_SEGUNDOS` | Contar pallets que llegaron antes del clip |
+| Un numero nuevo a menos de `PALLET_RADIO` de un pallet conocido, visto hace menos de `PALLET_MEMORIA_SEGUNDOS`, es el mismo | Contar dos veces un pallet al que ByteTrack le cambio el numero tras una oclusion |
+
+El modelo necesita las clases `pallet` y `person` (`modelos/pallets.pt`). Los
+motivos de los fotogramas clave no cambian (`primer_saco`, `ultimo_saco`), porque
+son codigos estables; cambia la frase. El modo por defecto sigue siendo `linea`,
+y con el nada de lo anterior cambia.
+
+```
+YOLO_MODO_CONTEO=pallets
+YOLO_WEIGHTS=/modelos/pallets.pt
+ZONA_PALLETS=0.38,0.05,0.80,0.70      # calibrar mirando un clip real
+```
+
 ## Decisiones que conviene conocer
 
 **Contar no es detectar.** Un saco aparece en decenas de fotogramas seguidos, y
@@ -232,6 +274,14 @@ Ninguna clave vive en el codigo (apartado 8).
 | `PERSONAS_HABITUALES` | `3` | Personas simultaneas que no llaman la atencion |
 | `PERMANENCIA_MAX_SEGUNDOS` | `600` | Por encima, la permanencia es anomala |
 | `PERMANENCIA_MIN_SEGUNDOS` | `1` | Por debajo, es un parpadeo del detector |
+| `YOLO_MODO_CONTEO` | `linea` | `linea` (HU-07) o `pallets`. Ver "Conteo por pallets" |
+| `YOLO_CLASE_PALLET` | `pallet` | Clase del modelo que cuenta como pallet |
+| `SACOS_POR_PALLET` | `40` | Sacos de un pallet completo |
+| `ZONA_PALLETS` | `0,0,1,1` | Donde se dejan los pallets junto al camion |
+| `PALLET_PERMANENCIA_SEGUNDOS` | `2` | Tiempo en la zona para contar |
+| `PALLET_IGNORAR_INICIO_SEGUNDOS` | `3` | Lo que ya estaba al empezar no cuenta |
+| `PALLET_RADIO` | `0.06` | Distancia relativa para tomar un numero nuevo como el mismo pallet |
+| `PALLET_MEMORIA_SEGUNDOS` | `6` | Cuanto tiempo atras se busca ese pallet conocido |
 | `YOLO_API_KEY` | vacio | Clave compartida con el grabador |
 
 ## Pruebas
