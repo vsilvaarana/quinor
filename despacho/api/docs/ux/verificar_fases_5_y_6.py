@@ -13,6 +13,7 @@ import sys, httpx, pathlib
 APP=str(pathlib.Path(__file__).resolve().parents[2]/"dashboard"/"app.py")
 from streamlit.testing.v1 import AppTest
 SALUD_OK=True
+BASCULA="ok"
 ROL1="administrador"
 def fila(i,estado="pendiente",**k):
     return dict(id=i,creado_en="2026-11-15T09:12:00",numero_orden=f"ORD-{i}",cliente="Cliente demo",diferencia_kg="-350.00",diferencia_pct="-1.75",sacos_esperados=400,sacos_contados=400,diferencia_sacos=0,personas_detectadas=3,personal_anomalo=True,severidad="alta",estado=estado,tiene_clip=True)|k
@@ -34,7 +35,7 @@ def falso(metodo,url,**k):
     r=url.split("//",1)[1].split("/",1)[1]; r="/"+r; LLAMADAS.append((metodo,r,k.get("json"),k.get("params")))
     def R(c,j): return httpx.Response(c,json=j)
     if r=="/salud":
-        return R(200,dict(estado="ok" if SALUD_OK else "error",componentes=[dict(componente="camara-rampa-01",estado="ok" if SALUD_OK else "error",mensaje="m"),dict(componente="camara-rampa-02",estado="ok",mensaje="m"),dict(componente="bascula",estado="ok",mensaje="m")]))
+        return R(200,dict(estado="ok" if SALUD_OK else "error",componentes=[dict(componente="camara-rampa-01",estado="ok" if SALUD_OK else "error",mensaje="m"),dict(componente="camara-rampa-02",estado="ok",mensaje="m"),dict(componente="bascula",estado=BASCULA,mensaje="m")]))
     if r=="/salud/historial": return R(200,[])
     if r=="/eventos/bandeja":
         f=[fila(214),fila(213,sacos_contados=397,diferencia_sacos=-3,diferencia_kg="-150.00"),fila(212,sacos_contados=None,diferencia_sacos=None,severidad=None)]
@@ -107,6 +108,7 @@ def _boton_pegado(self,label,*a,**k):
     return True if k.get("key") in ABIERTOS else r
 _DG.button=_boton_pegado
 def nueva():
+    import streamlit as st; st.cache_data.clear()   # la cabecera guarda /salud 20 s
     at=AppTest.from_file(APP,default_timeout=30)
     at.session_state["token"]="t"; at.session_state["usuario"]=dict(nombre="S",correo="s@q",rol=ROL_SESION)
     return at.run()
@@ -204,7 +206,7 @@ ok(any("Solo el rol Administrador" in c.value for c in at.caption) and len(at.da
 PANTALLA=None
 at=AppTest.from_file(APP,default_timeout=30).run()
 ok(not at.exception and [t_.label for t_ in at.text_input]==["Correo electrónico","Contraseña"],"F6: ingreso con sus dos campos")
-ok(any("le asignó el administrador" in c.value for c in at.caption) and any(m_.value=="## QUINOR" for m_ in at.markdown),"F6: ingreso centrado, con marca y leyenda")
+ok(any("le asignó el administrador" in c.value for c in at.caption) and any("q-marca" in m_.value and "QUINOR" in m_.value for m_ in at.markdown) and any(m_.value=="### Iniciar sesión" for m_ in at.markdown),"F6: ingreso en dos mitades, con panel de marca y leyenda")
 def cae(*a,**k): raise httpx.ConnectError("x")
 httpx.post=cae
 at.text_input[0].set_value("a@b"); at.text_input[1].set_value("x"); at.button[0].click().run()

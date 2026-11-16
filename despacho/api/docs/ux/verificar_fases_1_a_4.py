@@ -13,6 +13,7 @@ import sys, httpx, pathlib
 APP=str(pathlib.Path(__file__).resolve().parents[2]/"dashboard"/"app.py")
 from streamlit.testing.v1 import AppTest
 SALUD_OK=True
+BASCULA="ok"
 ROL1="administrador"
 def fila(i,estado="pendiente",**k):
     return dict(id=i,creado_en="2026-11-15T09:12:00",numero_orden=f"ORD-{i}",cliente="Cliente demo",diferencia_kg="-350.00",diferencia_pct="-1.75",sacos_esperados=400,sacos_contados=400,diferencia_sacos=0,personas_detectadas=3,personal_anomalo=True,severidad="alta",estado=estado,tiene_clip=True)|k
@@ -33,7 +34,7 @@ def falso(metodo,url,**k):
     r=url.split("//",1)[1].split("/",1)[1]; r="/"+r; LLAMADAS.append((metodo,r,k.get("json"),k.get("params")))
     def R(c,j): return httpx.Response(c,json=j)
     if r=="/salud":
-        return R(200,dict(estado="ok" if SALUD_OK else "error",componentes=[dict(componente="camara-rampa-01",estado="ok" if SALUD_OK else "error",mensaje="m"),dict(componente="camara-rampa-02",estado="ok",mensaje="m"),dict(componente="bascula",estado="ok",mensaje="m")]))
+        return R(200,dict(estado="ok" if SALUD_OK else "error",componentes=[dict(componente="camara-rampa-01",estado="ok" if SALUD_OK else "error",mensaje="m"),dict(componente="camara-rampa-02",estado="ok",mensaje="m"),dict(componente="bascula",estado=BASCULA,mensaje="m")]))
     if r=="/salud/historial": return R(200,[])
     if r=="/eventos/bandeja":
         f=[fila(214),fila(213,sacos_contados=397,diferencia_sacos=-3,diferencia_kg="-150.00"),fila(212,sacos_contados=None,diferencia_sacos=None,severidad=None)]
@@ -92,6 +93,7 @@ def _boton_pegado(self,label,*a,**k):
     return True if k.get("key") in ABIERTOS else r
 _DG.button=_boton_pegado
 def nueva():
+    import streamlit as st; st.cache_data.clear()   # la cabecera guarda /salud 20 s
     at=AppTest.from_file(APP,default_timeout=30)
     at.session_state["token"]="t"; at.session_state["usuario"]=dict(nombre="S",correo="s@q",rol=ROL_SESION)
     return at.run()
@@ -162,7 +164,7 @@ at.selectbox(key="filtro_severidad").set_value("media").run()
 PANTALLA="Registro de pesada"; n=len(LLAMADAS); at.run()
 ok(not at.exception and "Sistema en línea" in textos(at),"F4: la linea de estado va en todas las pantallas")
 ok("3 eventos" not in textos(at),"F4: el titulo grande solo esta en Eventos")
-rutas={l[1] for l in LLAMADAS[n:]}
+rutas={l[1] for l in LLAMADAS[n:]} | {"/salud"}   # /salud puede venir de la copia de 20 s
 ok(rutas=={"/eventos/bandeja","/salud","/pesadas"},"F4: en Registro de pesada no se piden tokens, usuarios ni tolerancias: "+str(sorted(rutas)))
 PANTALLA=None; at.run()
 ok(at.selectbox(key="filtro_severidad").value=="media","F4: los filtros de la bandeja sobreviven a visitar otra pantalla")

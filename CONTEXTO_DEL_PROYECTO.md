@@ -733,7 +733,8 @@ sesion nueva necesita saber; el detalle, funcion por funcion, esta en
    faltan sacos, conteo pendiente).
 6. **Confirmaciones** (`_confirmar`, con `st.dialog`) antes de revocar un
    token, cambiar un rol, desactivar un usuario o cambiar una tolerancia.
-7. **Tolerancias en una tabla**; se edita un producto cada vez.
+7. **Tolerancias en una tabla**; se edita un producto cada vez. **Ingreso en
+   dos mitades** (panel de marca y formulario), como en el prototipo.
 8. **Textos:** tildes y trato de usted en la interfaz, sin jerga. Los
    comentarios del codigo siguen sin tildes.
 
@@ -750,7 +751,10 @@ sesion nueva necesita saber; el detalle, funcion por funcion, esta en
   esperado de la orden, justo el valor que esconde un faltante.
 - **La diferencia de peso de un evento va en rojo, falte o sobre.** Con
   `delta_color="inverse"` fijo, un faltante salia en verde.
-- **La cabecera lee `GET /salud`.** Antes decia "En linea" siempre.
+- **La cabecera lee `GET /salud`.** Antes decia "En linea" siempre. Distingue
+  `error` (rojo, "con falla") de `advertencia` (ambar; la bascula en movimiento
+  no es una falla) y guarda la respuesta 20 segundos, porque `/salud` sondea de
+  verdad la bascula y el ERP en cada llamada.
 - **Elegir un rol en la lista no lo aplica:** hay que pulsar "Aplicar rol" y
   confirmar.
 - **El dashboard no repite reglas de la API.** La tolerancia efectiva, las
@@ -758,6 +762,10 @@ sesion nueva necesita saber; el detalle, funcion por funcion, esta en
 
 **Trampas de Streamlit que costaron tiempo**
 
+- En Windows, Docker no avisa al contenedor de que un archivo montado cambio:
+  el dashboard seguia sirviendo el codigo anterior. El compose arranca ahora con
+  `--server.fileWatcherType=poll`. Tras cambiar el comando o la API,
+  `docker compose up -d --force-recreate api dashboard`.
 - Un control que no se dibuja en una pasada pierde su valor. Los filtros de la
   bandeja se conservan con `_conservar_filtros`, llamado desde el programa.
 - Dentro de un `st.form` no hay redibujado mientras se escribe: por eso no hay

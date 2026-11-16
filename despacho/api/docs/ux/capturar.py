@@ -77,7 +77,7 @@ def menu(pagina: Page, pantalla: str) -> None:
 def recorrer(pagina: Page) -> None:
     pagina.goto(WEB)
     pagina.get_by_role("button", name="Iniciar sesión").wait_for()
-    captura(pagina, "01_ingreso", 700)
+    captura(pagina, "01_ingreso", 760)
 
     entrar(pagina, SUPERVISOR)
     captura(pagina, "02_eventos", 1000)

@@ -237,8 +237,12 @@ Desaparece `_ficha_de_la_orden`.
 - **El supervisor tiene una vista de lectura**, sin campos ni botones
   deshabilitados.
 - **Solo se pide el historial del producto elegido** (antes, el de todos).
-- **Ingreso centrado** en una columna angosta, con el nombre del sistema y una
-  leyenda. Hecho por un subagente y revisado. No se anadio un boton para ver la
+- **Ingreso en dos mitades**, como en el prototipo: a la izquierda un panel
+  verde con el nombre del sistema y para que sirve, a la derecha el formulario.
+  En pantallas estrechas se apilan. La primera version (hecha por un subagente
+  y revisada) solo centraba el formulario; el responsable pidio el diseno del
+  prototipo y se rehizo el mismo 15/11/2026 (`pantalla_de_ingreso`, clase
+  `.q-marca`). Comprobado en el navegador contra el dashboard local. No se anadio un boton para ver la
   contrasena porque el campo de Streamlit ya lo trae: ese punto de la critica
   inicial era incorrecto.
 - "Buffer de video" pasa a "Almacen de grabacion".
@@ -279,6 +283,47 @@ pulsar), y el campo de contrasena trae su boton para verla.
 
 Queda sin corregir, por menor: los correos se dibujan como enlaces.
 
+## Correccion de la linea de estado (15/11/2026, tras verla en uso)
+
+El responsable vio "1 componente con falla: bascula" en la pantalla de Eventos.
+Al revisarlo aparecieron dos defectos del punto critico 5:
+
+- **La cabecera llamaba falla a una advertencia.** `GET /salud` devuelve tres
+  niveles: `ok`, `advertencia` (la bascula en movimiento, que es lo normal
+  mientras se carga y lo que hace el simulador en cada ciclo) y `error` (no
+  responde). La cabecera pintaba en rojo todo lo que no fuera `ok`. Ahora
+  `error` va en rojo como "componente con falla" y `advertencia` en ambar como
+  "Sistema en linea - 1 componente con advertencia".
+- **La cabecera sondeaba la bascula en cada clic.** `GET /salud` no lee una
+  tabla: interroga a la bascula por Modbus y al ERP por HTTP. Con la bascula
+  apagada, cada pantalla tardaba los 5 segundos de su tiempo limite. Ahora la
+  cabecera guarda la respuesta 20 segundos (`_salud_reciente`, con
+  `st.cache_data`). La pantalla Estado del sistema sigue preguntando en directo.
+
+Si tras esto la linea sigue en rojo con "bascula", la bascula no responde de
+verdad: en local, comprobar que el servicio `scale-sim` esta en marcha
+(`docker compose ps scale-sim`) y leer el mensaje en Estado del sistema.
+
+## Por que el dashboard local mostraba la version anterior
+
+El 15/11/2026 el responsable veia el ingreso antiguo aunque `dashboard/app.py`
+ya tenia el nuevo. Causa: en Windows, Docker no propaga al contenedor los
+avisos de cambio de un archivo montado, asi que Streamlit no se enteraba y
+seguia sirviendo el codigo que cargo al arrancar. Lo mismo pudo pasar con cada
+entrega anterior de esta mejora.
+
+Correccion: el servicio `dashboard` de `docker-compose.yml` arranca ahora con
+`--server.fileWatcherType=poll` y `--server.runOnSave=true`. Hace falta recrear
+el contenedor una vez para que tome el comando nuevo:
+
+```powershell
+docker compose up -d --force-recreate api dashboard
+```
+
+Se incluye `api` porque `uvicorn --reload` depende del mismo aviso: sin
+reiniciarla, el endpoint `POST /pesadas/lectura-previa` puede no existir todavia
+en el contenedor y "Leer bascula" fallaria.
+
 ## Como se comprobo
 
 Con `streamlit.testing.v1.AppTest` y una API simulada, sin levantar el entorno:
@@ -290,7 +335,7 @@ python docs/ux/verificar_fases_1_a_4.py
 python docs/ux/verificar_fases_5_y_6.py
 ```
 
-Los tres terminan en "TODO OK" (23, 44 y 42 comprobaciones). No estan en `tests/`
+Los tres terminan en "TODO OK" (26, 44 y 42 comprobaciones). No estan en `tests/`
 porque la convencion 4 pide pruebas contra cosas reales y estas usan respuestas
 de mentira.
 

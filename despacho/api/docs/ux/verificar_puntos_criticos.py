@@ -13,6 +13,7 @@ import sys, httpx, pathlib
 APP=str(pathlib.Path(__file__).resolve().parents[2]/"dashboard"/"app.py")
 from streamlit.testing.v1 import AppTest
 SALUD_OK=True
+BASCULA="ok"
 def fila(i,estado="pendiente"):
     return dict(id=i,creado_en="2026-11-15T09:12:00",numero_orden=f"ORD-{i}",cliente="Cliente demo",diferencia_kg="-350.00",diferencia_pct="-1.75",sacos_esperados=400,sacos_contados=400,diferencia_sacos=0,personas_detectadas=3,personal_anomalo=True,severidad="alta",estado=estado,tiene_clip=True)
 def detalle(i,dif=-350.0):
@@ -30,7 +31,7 @@ def falso(metodo,url,**k):
     r=url.split("//",1)[1].split("/",1)[1]; r="/"+r; LLAMADAS.append((metodo,r,k.get("json"),k.get("params")))
     def R(c,j): return httpx.Response(c,json=j)
     if r=="/salud":
-        return R(200,dict(estado="ok" if SALUD_OK else "error",componentes=[dict(componente="camara-rampa-01",estado="ok" if SALUD_OK else "error",mensaje="m"),dict(componente="camara-rampa-02",estado="ok",mensaje="m"),dict(componente="bascula",estado="ok",mensaje="m")]))
+        return R(200,dict(estado="ok" if SALUD_OK else "error",componentes=[dict(componente="camara-rampa-01",estado="ok" if SALUD_OK else "error",mensaje="m"),dict(componente="camara-rampa-02",estado="ok",mensaje="m"),dict(componente="bascula",estado=BASCULA,mensaje="m")]))
     if r=="/salud/historial": return R(200,[])
     if r=="/eventos/bandeja":
         f=[fila(214),fila(213),fila(212)]
@@ -75,6 +76,7 @@ def _indices(self):
     return [list(self.options).index(self.format_func(x)) for x in vals]
 _et.ButtonGroup.indices=property(_indices)
 def nueva():
+    import streamlit as st; st.cache_data.clear()   # la cabecera guarda /salud 20 s
     at=AppTest.from_file(APP,default_timeout=30)
     at.session_state["token"]="t"; at.session_state["usuario"]=dict(nombre="S",correo="s@q",rol="supervisor")
     return at.run()
@@ -115,6 +117,12 @@ ok(LLAMADAS[-1][0]=="GET","sin escrituras al volver")
 SALUD_OK=False; at=nueva()
 ok("1 componente con falla: camara-rampa-01" in textos(at),"5: cabecera en rojo con la camara caida")
 SALUD_OK=True
+BASCULA="advertencia"; at=nueva()
+ok("1 componente con advertencia: bascula" in textos(at) and "con falla" not in textos(at) and "q-vivo q-aviso" in textos(at),"5: la bascula en movimiento es advertencia (ambar), no falla")
+BASCULA="error"; at=nueva()
+ok("1 componente con falla: bascula" in textos(at),"5: la bascula sin respuesta si es falla")
+BASCULA="ok"; at=nueva(); n=len(LLAMADAS); at.run(); at.run()
+ok(not [l for l in LLAMADAS[n:] if l[1]=="/salud"],"5: la cabecera no vuelve a sondear /salud en cada pasada (20 s)")
 # pesada manual (AppTest 1.41 no sabe pulsar segmented_control: se fija su valor)
 import streamlit as st; st.segmented_control=lambda *a,**k:"Ingreso manual"
 PANTALLA='Registro de pesada'

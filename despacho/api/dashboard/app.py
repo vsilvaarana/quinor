@@ -95,6 +95,8 @@ h1, h2, h3, h4, [data-testid="stMetricValue"] {font-family: 'Space Grotesk', Int
 .q-vivo i {width: 8px; height: 8px; border-radius: 50%; background: #2E8B57; animation: q-pulso 2s infinite;}
 .q-vivo.q-caido {color: #9B2C14; font-weight: 500;}
 .q-vivo.q-caido i {background: #9B2C14; animation: none;}
+.q-vivo.q-aviso {color: #7A4F00;}
+.q-vivo.q-aviso i {background: #C98A00; animation: none;}
 @keyframes q-pulso {0% {box-shadow: 0 0 0 0 rgba(46,139,87,.55);} 70% {box-shadow: 0 0 0 10px rgba(46,139,87,0);} 100% {box-shadow: 0 0 0 0 rgba(46,139,87,0);}}
 .q-pasos {display: flex; gap: 6px; margin: 4px 0 2px;}
 .q-paso {flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0;}
@@ -116,6 +118,12 @@ h1, h2, h3, h4, [data-testid="stMetricValue"] {font-family: 'Space Grotesk', Int
 .q-dif {font: 500 26px/1.1 'Space Grotesk', Inter, sans-serif; color: #9B2C14; font-variant-numeric: tabular-nums;}
 .q-hall {display: inline-block; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 8px; border: 1px solid #CFC9BA; color: #3A4640; margin-bottom: 6px;}
 .q-hall.q-sust {background: #1E2A23; border-color: #1E2A23; color: #FFFFFF;}
+.q-marca {background: #1F5C3A; color: #FFFFFF; border-radius: 18px; padding: 44px 40px; min-height: 440px; display: flex; flex-direction: column; justify-content: space-between; gap: 32px;}
+.q-marca .q-nombre {font: 600 30px/1.1 'Space Grotesk', Inter, sans-serif; letter-spacing: -.01em;}
+.q-marca .q-sub {color: #D5E8DC; font-size: 15px; margin-top: 4px;}
+.q-marca .q-lema {font: 500 28px/1.22 'Space Grotesk', Inter, sans-serif; letter-spacing: -.01em; max-width: 420px;}
+.q-marca .q-pie {color: #D5E8DC; font-size: 14px;}
+@media (max-width: 760px) {.q-marca {min-height: 0; padding: 28px 24px; gap: 18px;} .q-marca .q-lema {font-size: 21px;}}
 .q-lectura {font: 500 48px/1.15 'Space Grotesk', Inter, sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin: 2px 0 18px;}
 .q-reloj {font: 400 30px/1 'Space Grotesk', Inter, sans-serif; letter-spacing: -.03em; font-variant-numeric: tabular-nums;}
 </style>
@@ -222,23 +230,42 @@ def _intentar_ingreso(correo: str, clave: str) -> None:
 
 
 def pantalla_de_ingreso() -> None:
-    # El formulario va centrado en una columna angosta porque a todo el ancho
-    # los campos median mas de mil pixeles para un correo (critica de UX del
-    # 15/11/2026, fase 6).
-    _, centro, _ = st.columns([1, 1.2, 1])
-    with centro:
-        st.markdown("## QUINOR")
-        st.caption("Control de despacho · Rampa de carga")
-        with st.form("ingreso"):
-            correo = st.text_input("Correo electrónico", placeholder="usuario@quinor.local")
-            clave = st.text_input("Contraseña", type="password")
-            # Sin return aqui: la leyenda de abajo debe dibujarse siempre,
-            # tambien antes de pulsar y cuando el ingreso falla.
-            if st.form_submit_button("Iniciar sesión", type="primary",
-                                     use_container_width=True):
-                _intentar_ingreso(correo, clave)
-        st.caption("Use el correo y la contraseña que le asignó el administrador. "
-                   "La sesión se cierra al salir del navegador.")
+    """Ingreso en dos mitades: a la izquierda que sistema es, a la derecha el
+    formulario. Es el diseno del prototipo de la critica de UX (15/11/2026).
+
+    A todo el ancho los campos median mas de mil pixeles para un correo, y la
+    pantalla no decia a que sistema se estaba entrando. La primera correccion
+    (fase 6) solo centro el formulario; esta le anade el panel de marca. En una
+    pantalla estrecha las dos mitades se apilan y el panel se encoge.
+    """
+    # Un respiro arriba: sin el, la barra superior de Streamlit tapaba el borde
+    # redondeado del panel.
+    st.markdown('<div style="height: 6vh"></div>', unsafe_allow_html=True)
+    _, cuerpo, _ = st.columns([1, 10, 1])
+    with cuerpo:
+        marca, acceso = st.columns(2, gap="large", vertical_alignment="center")
+        marca.markdown(
+            '<div class="q-marca">'
+            '<div><div class="q-nombre">QUINOR</div>'
+            '<div class="q-sub">Control de despacho</div></div>'
+            '<div class="q-lema">Cada carga, pesada y contada antes de que el '
+            'contenedor salga de planta.</div>'
+            '<div class="q-pie">Rampa de carga · QUINOR S.A.C.</div>'
+            '</div>', unsafe_allow_html=True)
+        with acceso:
+            st.markdown("### Iniciar sesión")
+            st.caption("Use el correo y la contraseña que le asignó el administrador.")
+            with st.form("ingreso"):
+                correo = st.text_input("Correo electrónico",
+                                       placeholder="usuario@quinor.local")
+                clave = st.text_input("Contraseña", type="password")
+                # Sin return aqui: la leyenda de abajo debe dibujarse siempre,
+                # tambien antes de pulsar y cuando el ingreso falla.
+                if st.form_submit_button("Iniciar sesión", type="primary",
+                                         use_container_width=True):
+                    _intentar_ingreso(correo, clave)
+            st.caption("La sesión se cierra al salir del navegador. Si no puede "
+                       "ingresar, avise al administrador del sistema.")
 
 
 # -------------------------------------------------------------------- salud
@@ -2189,6 +2216,25 @@ if "token" not in st.session_state:
 
 usuario_actual = st.session_state["usuario"]
 
+@st.cache_data(ttl=20, show_spinner=False)
+def _salud_reciente(token: str) -> tuple[int, dict | None]:
+    """GET /salud, guardado 20 segundos.
+
+    `GET /salud` no lee una tabla: sondea de verdad la bascula por Modbus y el
+    ERP por HTTP. La cabecera se dibuja en cada pasada, asi que sin esto cada
+    clic interrogaba a la bascula, y con la bascula apagada cada pantalla tardaba
+    los 5 segundos de su tiempo limite. Veinte segundos bastan para una linea de
+    estado; la pantalla Estado del sistema sigue preguntando en directo.
+
+    El token es parte de la clave para que una sesion no vea la respuesta (o el
+    401) de otra. Si la peticion falla, la excepcion sale y no se guarda nada.
+    """
+    respuesta = httpx.request("GET", f"{API_URL}/salud", timeout=TIEMPO_LIMITE,
+                              headers={"X-API-Key": token})
+    return respuesta.status_code, (respuesta.json() if respuesta.status_code == 200
+                                   else None)
+
+
 def _estado_de_la_planta() -> str:
     """La linea de estado de la cabecera, leida de GET /salud.
 
@@ -2196,29 +2242,43 @@ def _estado_de_la_planta() -> str:
     preguntarle a nadie. Con una camara caida la cabecera seguia en verde, y un
     indicador que no puede ponerse en rojo es peor que no tener indicador: el
     supervisor aprende a fiarse de el. Convencion 8: un fallo se ve.
+
+    Tres niveles, los mismos que usa la API. "error" va en rojo: algo no
+    responde. "advertencia" va en ambar y no se llama falla: el caso tipico es
+    la bascula en movimiento, que es lo normal mientras se carga un camion. La
+    primera version pintaba las dos cosas en rojo como "componente con falla", y
+    la cabecera daba la alarma cada vez que el peso oscilaba.
     """
     ahora = f"{dt.datetime.now():%d/%m/%Y %H:%M}"
     try:
-        respuesta = pedir("GET", "/salud")
+        codigo, salud = _salud_reciente(st.session_state.get("token", ""))
     except httpx.HTTPError:
         return (f'<span class="q-vivo q-caido"><i></i>Sin conexión con el sistema · '
                 f'{ahora}</span>')
-    if respuesta.status_code == 401:
+    if codigo == 401:
         # La cabecera es lo primero que se dibuja: si el token ya no vale, se
-        # sale aqui en vez de pintar ocho pestanas con el mismo error.
+        # sale aqui en vez de pintar todas las pantallas con el mismo error.
+        _salud_reciente.clear()
         cerrar_sesion()
         st.rerun()
-    if respuesta.status_code != 200:
+    if codigo != 200:
         return (f'<span class="q-vivo q-caido"><i></i>No se pudo leer el estado del '
                 f'sistema · {ahora}</span>')
 
-    componentes = respuesta.json()["componentes"]
-    caidos = [c["componente"] for c in componentes if c["estado"] != "ok"]
+    componentes = salud["componentes"]
+    caidos = [c["componente"] for c in componentes if c["estado"] == "error"]
+    avisos = [c["componente"] for c in componentes
+              if c["estado"] not in ("ok", "error")]
     if caidos:
         cuantos = (f"{len(caidos)} componentes con falla" if len(caidos) > 1
                    else "1 componente con falla")
         return (f'<span class="q-vivo q-caido"><i></i>{cuantos}: {", ".join(caidos)} · '
                 f'consulte Estado del sistema · {ahora}</span>')
+    if avisos:
+        cuantos = (f"{len(avisos)} componentes con advertencia" if len(avisos) > 1
+                   else "1 componente con advertencia")
+        return (f'<span class="q-vivo q-aviso"><i></i>Sistema en línea · {cuantos}: '
+                f'{", ".join(avisos)} · consulte Estado del sistema · {ahora}</span>')
     camaras = sum(1 for c in componentes if c["componente"].startswith(PREFIJO_CAMARA))
     grabando = (f' · {camaras} cámara{"s" if camaras != 1 else ""} grabando'
                 if camaras else "")

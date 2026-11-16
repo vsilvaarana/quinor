@@ -151,6 +151,12 @@ services:
       - --server.port=8501
       - --server.address=0.0.0.0
       - --server.headless=true
+      # En Windows, Docker no avisa al contenedor de que un archivo montado
+      # cambio, y Streamlit seguia sirviendo el codigo anterior hasta reiniciar
+      # el servicio. Con "poll" mira el archivo el mismo, y con runOnSave
+      # redibuja al guardar (15/11/2026).
+      - --server.fileWatcherType=poll
+      - --server.runOnSave=true
     ports:
       - "${DASHBOARD_PORT:-8501}:8501"
     volumes:
