@@ -283,6 +283,60 @@ pulsar), y el campo de contrasena trae su boton para verla.
 
 Queda sin corregir, por menor: los correos se dibujan como enlaces.
 
+## Bandeja de eventos, segunda pasada (15/11/2026, tras verla en uso)
+
+El responsable abrio la pantalla de Eventos y no vio la mejora: lo entregado en
+la fase 2 se parecia poco a la propuesta del prototipo. Se rehizo:
+
+- **Titulo compacto.** "Eventos" y, debajo, "3 pendientes de revision". Antes,
+  "Control de despacho" a 40 px con la cifra en dorado, en dos renglones.
+- **Lista en filas con cabecera** (Severidad, Orden, Diferencia de peso,
+  Hallazgo, Proceso) en lugar de una tarjeta alta por evento. Cada fila mide
+  unos 100 px; antes, unos 150, y cabian tres en pantalla.
+- **Proceso en una frase** ("Analisis completo", "Conteo en curso (3 de 4)",
+  "Sin video de la carga"), con la barra de pasos pequena y sin rotulos.
+- La severidad se escribe corta ("Alta"), el boton se llama "Revisar" y la
+  diferencia usa el signo menos tipografico.
+- **La lista va sobre fondo blanco**, como la tarjeta del prototipo; el
+  responsable noto que faltaba al comparar la captura. La regla CSS apunta al
+  contenedor con borde que envuelve a `st-key-lista_de_eventos`.
+
+Funciones: `_tarjetas_de_la_bandeja` (reescrita), `_proceso_de_la_fila`,
+`_cabecera_de_eventos`, `_pill_de_severidad(corta=True)`. El espacio entre
+filas se aprieta con la clase `st-key-lista_de_eventos`, que Streamlit da al
+contenedor por su `key`.
+
+**Lo que esta pasada dejo claro:** el dashboard corre en Python 3.11 y las
+comprobaciones se estaban ejecutando con 3.13. Una f-string con comillas
+anidadas, valida en 3.12 o posterior, paso las pruebas y habria dejado el
+dashboard sin arrancar en el contenedor. La detecto `capturar.py`, que usa el
+entorno del proyecto. **Los scripts de `docs/ux/` hay que ejecutarlos con el
+Python del proyecto (3.11).**
+
+## Tarjetas, tablas y campos en blanco (15/11/2026)
+
+El prototipo pone todo el contenido sobre tarjetas blancas y el dashboard lo
+dejaba en el crema del fondo. A pedido del responsable se igualo en todas las
+pantallas:
+
+| Elemento | Como se consigue |
+|---|---|
+| Tarjetas (orden, carga, lectura de bascula, cifras, video, analisis, personas, decision, usuarios, tokens) | `_tarjeta(clave)`: contenedor con borde y clave `tarjeta_<clave>`; el CSS pinta de blanco todo contenedor con esa clase |
+| Lista de eventos, formularios y desplegables | Reglas CSS en `ESTILO` |
+| Tablas (`st.dataframe`) | `_tabla(...)`: da el color celda a celda con el estilo de pandas, porque la tabla se dibuja en un lienzo que no hereda el CSS. Tambien fija dos decimales |
+| Campos de texto, numero y listas | `secondaryBackgroundColor = "#FFFFFF"` en `.streamlit/config.toml`, mas un borde por CSS |
+| Barra lateral | Conserva el crema (`#F1EDE2`) por CSS, porque el tema ya no se lo da |
+
+La pagina del evento paso de bloques sueltos a cinco tarjetas (cifras, video,
+analisis, personas y decision), y el formulario de clasificacion ya no tiene
+borde propio porque va dentro de la tarjeta de la decision.
+
+Hay que usar `_tabla` y `_tarjeta` en cualquier pantalla nueva, y no
+`st.dataframe` ni `st.container(border=True)` directamente.
+
+El cambio de `config.toml` solo se toma al arrancar Streamlit: hay que
+reiniciar el servicio `dashboard`.
+
 ## Correccion de la linea de estado (15/11/2026, tras verla en uso)
 
 El responsable vio "1 componente con falla: bascula" en la pantalla de Eventos.

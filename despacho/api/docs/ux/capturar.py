@@ -80,8 +80,8 @@ def recorrer(pagina: Page) -> None:
     captura(pagina, "01_ingreso", 760)
 
     entrar(pagina, SUPERVISOR)
-    captura(pagina, "02_eventos", 1000)
-    pagina.get_by_role("button", name="Ver detalle").first.click()
+    captura(pagina, "02_eventos", 900)
+    pagina.get_by_role("button", name="Revisar").first.click()
     pagina.get_by_role("button", name="← Volver a Eventos").wait_for()
     captura(pagina, "03_evento", 2300)
     pagina.get_by_role("button", name="← Volver a Eventos").click()

@@ -8,7 +8,10 @@
 base = "light"
 primaryColor = "#2E7D4F"
 backgroundColor = "#FAF8F2"
-secondaryBackgroundColor = "#EFEBDF"
+# Blanco desde el 15/11/2026: es el color de los campos y de la cabecera de las
+# tablas, que en el prototipo van en blanco con borde. La barra lateral conserva
+# su crema por CSS (`ESTILO`, en dashboard/app.py).
+secondaryBackgroundColor = "#FFFFFF"
 textColor = "#1E2A23"
 font = "sans serif"
 

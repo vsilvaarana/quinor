@@ -105,7 +105,7 @@ h1, h2, h3, h4, [data-testid="stMetricValue"] {font-family: 'Space Grotesk', Int
 .q-ok b {background: #2E8B57;} .q-curso b {background: repeating-linear-gradient(90deg,#3B6FB6 0 6px,#C9D8EE 6px 12px); background-size: 24px 5px; animation: q-avanza 1s linear infinite;}
 .q-fallo b {background: transparent; box-shadow: inset 0 0 0 2px #A8741A;} .q-no b {background: #D9D4C7;}
 @keyframes q-avanza {from {background-position: 0 0;} to {background-position: 24px 0;}}
-.q-pill {display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 5px 10px; border-radius: 8px;}
+.q-pill {display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 5px 10px; border-radius: 8px; white-space: nowrap;}
 .q-alta {background: #FBE3DC; color: #9B2C14;} .q-media {background: #FCEFD6; color: #8A5A00;}
 .q-baja {background: #E3ECF7; color: #2F5487;} .q-sin {background: #ECEAE3; color: #5F6B64;}
 .q-chips {display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px;}
@@ -115,6 +115,20 @@ h1, h2, h3, h4, [data-testid="stMetricValue"] {font-family: 'Space Grotesk', Int
 .q-pasos-pesada {display: flex; gap: 10px; margin: 6px 0 18px;}
 .q-pp {flex: 1; padding: 12px 14px; border-radius: 12px; border: 1px solid #D9D4C7; font-size: 14px; color: #5F6B64;}
 .q-pp.hecho {border-color: #8CC5A5; color: #2E8B57;} .q-pp.actual {border-color: #A8741A; color: #1E2A23;}
+.q-titulo {font: 500 30px/1.15 'Space Grotesk', Inter, sans-serif; letter-spacing: -.01em; margin: 6px 0 2px;}
+.q-sep {border: 0; border-top: 1px solid #E4DFD2; margin: 0;}
+.st-key-lista_de_eventos {gap: 0.55rem;}
+[data-testid="stVerticalBlockBorderWrapper"]:has(> div > .st-key-lista_de_eventos),
+[data-testid="stVerticalBlockBorderWrapper"]:has(> div > [class*="st-key-tarjeta_"]),
+[data-testid="stForm"], [data-testid="stExpander"] details {background: #FFFFFF;}
+.q-pp, .q-chip {background: #FFFFFF;}
+[data-testid="stSidebar"] {background: #F1EDE2; border-right: 1px solid #D9D4C7;}
+[data-baseweb="input"], [data-baseweb="textarea"], [data-baseweb="select"] > div, [data-testid="stNumberInputContainer"] {border: 1px solid #BDB7A8 !important; background: #FFFFFF;}
+[data-testid="stNumberInputContainer"] [data-baseweb="input"] {border: 0 !important;}
+.st-key-lista_de_eventos [data-testid="stMarkdownContainer"] p {margin-bottom: 0;}
+.q-cab {font-size: 12.5px; color: #5F6B64;}
+.q-proceso {font-size: 14px; color: #3A4640;} .q-proceso.q-listo {color: #17502F; font-weight: 500;} .q-proceso.q-mal {color: #9B2C14; font-weight: 500;}
+.q-pasos.q-mini {margin-top: 6px; max-width: 180px;} .q-pasos.q-mini span {display: none;}
 .q-dif {font: 500 26px/1.1 'Space Grotesk', Inter, sans-serif; color: #9B2C14; font-variant-numeric: tabular-nums;}
 .q-hall {display: inline-block; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 8px; border: 1px solid #CFC9BA; color: #3A4640; margin-bottom: 6px;}
 .q-hall.q-sust {background: #1E2A23; border-color: #1E2A23; color: #FFFFFF;}
@@ -179,10 +193,38 @@ def _pasos_de_la_fila(e: dict) -> list[tuple[str, str]]:
         e["estado"])
 
 
-def _pill_de_severidad(severidad: str | None) -> str:
+def _tarjeta(clave: str):
+    """Un bloque con borde y fondo blanco, como las tarjetas del prototipo.
+
+    El fondo lo pone el CSS de `ESTILO` a todo contenedor cuya clave empiece
+    por `tarjeta_`: Streamlit no deja elegir el color de un contenedor, pero da
+    a cada uno con `key` una clase `st-key-<clave>` a la que apuntar.
+    """
+    return st.container(border=True, key=f"tarjeta_{clave}")
+
+
+def _tabla(datos, **opciones) -> None:
+    """`st.dataframe` con las celdas en blanco.
+
+    La tabla se dibuja en un lienzo y no hereda el CSS de la pagina: tomaba el
+    color crema del fondo. El unico modo de cambiarlo es darle el color celda a
+    celda con el estilo de pandas. El formato de dos decimales tambien va aqui,
+    porque con estilo la tabla muestra el texto que pandas le pasa.
+    """
+    marco = datos if isinstance(datos, pd.DataFrame) else pd.DataFrame(datos)
+    estilo = (marco.style.set_properties(**{"background-color": "#FFFFFF"})
+              .format(precision=2, na_rep=""))
+    st.dataframe(estilo, **opciones)
+
+
+def _pill_de_severidad(severidad: str | None, corta: bool = False) -> str:
+    """La etiqueta de severidad. `corta` es para la lista, donde la columna ya
+    se llama Severidad y repetir la palabra en cada fila solo anade ruido."""
     if not severidad:
-        return '<span class="q-pill q-sin">Sin severidad</span>'
-    return f'<span class="q-pill q-{severidad}">Severidad {severidad}</span>'
+        texto = "Por calcular" if corta else "Sin severidad"
+        return f'<span class="q-pill q-sin">{texto}</span>'
+    texto = severidad if corta else f"Severidad {severidad}"
+    return f'<span class="q-pill q-{severidad}">{texto}</span>'
 
 
 # --------------------------------------------------------------- transporte
@@ -289,7 +331,7 @@ def panel_de_salud() -> None:
         st.success("Todos los componentes responden.")
     else:
         st.warning("Hay componentes con error. Revise el detalle.")
-    st.dataframe(pd.DataFrame(datos["componentes"]),
+    _tabla(pd.DataFrame(datos["componentes"]),
                  use_container_width=True, hide_index=True)
 
 
@@ -361,24 +403,25 @@ def panel_de_tokens() -> None:
         st.info("No hay tokens emitidos.")
         return
 
-    anchos = [3, 3, 3, 2]
-    for columna, titulo in zip(st.columns(anchos), ("Equipo", "Vence", "Último uso", "")):
-        columna.caption(titulo)
-    for token in tokens:
-        revocado = token["revocado_en"] is not None
-        columnas = st.columns(anchos, vertical_alignment="center")
-        columnas[0].write(f"**{token['nombre']}**")
-        columnas[1].write(_fecha_corta(token["expira_en"]))
-        columnas[2].write("Revocado" if revocado else _fecha_corta(token["ultimo_uso_en"]))
-        if not revocado and columnas[3].button("Revocar", key=f"revocar_{token['id']}",
-                                               use_container_width=True):
-            _confirmar(
-                f"Va a revocar el token **{token['nombre']}**.",
-                "Deja de servir de inmediato y no se puede deshacer. El equipo que "
-                "lo use tendrá que pedir un token nuevo. Si es el token de esta "
-                "sesión, tendrá que volver a iniciar sesión.",
-                "Revocar token", "DELETE", f"/auth/tokens/{token['id']}", None,
-                f"Token «{token['nombre']}» revocado. Ya no sirve.")
+    with _tarjeta("tokens"):
+        anchos = [3, 3, 3, 2]
+        for columna, titulo in zip(st.columns(anchos), ("Equipo", "Vence", "Último uso", "")):
+            columna.caption(titulo)
+        for token in tokens:
+            revocado = token["revocado_en"] is not None
+            columnas = st.columns(anchos, vertical_alignment="center")
+            columnas[0].write(f"**{token['nombre']}**")
+            columnas[1].write(_fecha_corta(token["expira_en"]))
+            columnas[2].write("Revocado" if revocado else _fecha_corta(token["ultimo_uso_en"]))
+            if not revocado and columnas[3].button("Revocar", key=f"revocar_{token['id']}",
+                                                   use_container_width=True):
+                _confirmar(
+                    f"Va a revocar el token **{token['nombre']}**.",
+                    "Deja de servir de inmediato y no se puede deshacer. El equipo que "
+                    "lo use tendrá que pedir un token nuevo. Si es el token de esta "
+                    "sesión, tendrá que volver a iniciar sesión.",
+                    "Revocar token", "DELETE", f"/auth/tokens/{token['id']}", None,
+                    f"Token «{token['nombre']}» revocado. Ya no sirve.")
 
 
 # ----------------------------------------------------------------- eventos
@@ -483,52 +526,105 @@ def _hallazgo_de_la_fila(e: dict) -> tuple[str, str]:
     return "", "Sobrepeso con sacos completos"
 
 
-def _tarjetas_de_la_bandeja(eventos: list[dict]) -> None:
-    """Un evento por tarjeta, con lo que importa a la vista: cuanto falta, que
-    significa, en que va el analisis y un boton para revisarlo.
+def _proceso_de_la_fila(e: dict) -> str:
+    """En que va el analisis del evento, en una frase y una barra pequena.
 
-    La diferencia en kg va en grande porque es el hecho; antes iba en la letra
-    mas pequena de la tarjeta, por debajo del numero de orden.
+    La barra de cuatro pasos con sus cuatro rotulos ocupaba un tercio de cada
+    tarjeta para decir, casi siempre, "todo hecho". Ahora la frase dice lo que
+    importa (hecho, en que paso va, o que fallo) y la barra queda de apoyo.
     """
-    for e in eventos:
-        with st.container(border=True):
-            quien, cuanto, que, accion = st.columns([4, 3, 4, 2],
-                                                    vertical_alignment="center")
-            # Dia y mes bastan en la tarjeta (el ano esta en la tabla): con la
-            # fecha completa el renglon no cabia y se partia en dos.
-            fecha = f"{e['creado_en'][8:10]}/{e['creado_en'][5:7]} {e['creado_en'][11:16]}"
-            quien.markdown(
-                f"{_pill_de_severidad(e['severidad'])} &nbsp;"
-                f"<span class='q-tenue'>#{e['id']} · {fecha}</span>",
-                unsafe_allow_html=True)
-            quien.markdown(f"**{e['numero_orden']}** · {e['cliente']}")
+    pasos = _pasos_de_la_fila(e)
+    estados = [estado for _, estado in pasos]
+    if all(estado == "ok" for estado in estados):
+        clase, frase = "q-listo", "Análisis completo"
+    elif "fallo" in estados:
+        nombre = pasos[estados.index("fallo")][0]
+        clase, frase = "q-mal", {"Video": "Sin video de la carga",
+                                 "Análisis": "Sin descripción automática"}.get(
+                                     nombre, f"{nombre}: no se completó")
+    elif "curso" in estados:
+        indice = estados.index("curso")
+        clase, frase = "", f"{pasos[indice][0]} en curso ({indice + 1} de {len(pasos)})"
+    else:
+        clase, frase = "", "Análisis incompleto"
+    barra = _barra_de_pasos(pasos).replace('class="q-pasos"', 'class="q-pasos q-mini"')
+    return f'<div class="q-proceso {clase}">{frase}</div>{barra}'
 
-            cuanto.markdown(
-                f"<div class='q-dif'>{float(e['diferencia_kg']):+,.0f} kg</div>",
+
+# Anchos de la lista de eventos: severidad, orden, diferencia, hallazgo,
+# proceso y boton. Los comparten la cabecera y cada fila para que alineen.
+ANCHOS_DE_LA_LISTA = [1.7, 3.1, 1.9, 2.9, 2.2, 1.7]
+
+
+def _tarjetas_de_la_bandeja(eventos: list[dict]) -> None:
+    """La lista de eventos: una fila por evento, en columnas con cabecera.
+
+    Es el diseno del prototipo de la critica de UX. La primera version de la
+    fase 2 dejo una tarjeta alta por evento; cabian tres en pantalla y habia
+    que desplazarse para comparar. En filas alineadas se leen de un vistazo la
+    severidad, cuanto falta y que significa, que es el orden en que se decide.
+    """
+    # La clave da a la lista una clase CSS propia (`st-key-...`) para apretar el
+    # espacio entre filas: con la separacion normal de Streamlit cada fila media
+    # casi 150 px y volvian a caber solo tres.
+    with st.container(border=True, key="lista_de_eventos"):
+        cabecera = st.columns(ANCHOS_DE_LA_LISTA)
+        for columna, titulo in zip(cabecera, ("Severidad", "Orden", "Diferencia de peso",
+                                              "Hallazgo", "Proceso", "")):
+            columna.markdown(f'<span class="q-cab">{titulo}</span>',
+                             unsafe_allow_html=True)
+        for e in eventos:
+            st.markdown('<hr class="q-sep">', unsafe_allow_html=True)
+            severidad, orden, cuanto, que, proceso, accion = st.columns(
+                ANCHOS_DE_LA_LISTA, vertical_alignment="center")
+            severidad.markdown(_pill_de_severidad(e["severidad"], corta=True),
+                               unsafe_allow_html=True)
+
+            # Dia y mes bastan en la lista: el ano esta en la vista de tabla.
+            fecha = f"{e['creado_en'][8:10]}/{e['creado_en'][5:7]} {e['creado_en'][11:16]}"
+            orden.markdown(
+                f"**{e['numero_orden']}** <span class='q-tenue' style='font-size: 13.5px'>"
+                f"#{e['id']}</span><br>"
+                f"<span class='q-tenue' style='font-size: 14px'>{e['cliente']} · "
+                f"<span style='white-space: nowrap'>{fecha}</span></span>",
                 unsafe_allow_html=True)
-            cuanto.caption(f"{float(e['diferencia_pct']):+.1f} % del peso esperado")
+
+            # Signo menos tipografico: el guion se leia como una raya suelta.
+            kilos = f"{float(e['diferencia_kg']):+,.0f}".replace("-", "−")
+            cuanto.markdown(
+                f"<div class='q-dif'>{kilos} kg</div>"
+                f"<span class='q-tenue' style='font-size: 13.5px'>"
+                f"{float(e['diferencia_pct']):+.1f} % del esperado</span>",
+                unsafe_allow_html=True)
 
             clase, hallazgo = _hallazgo_de_la_fila(e)
-            que.markdown(f"<span class='q-hall {clase}'>{hallazgo}</span>"
-                         + _barra_de_pasos(_pasos_de_la_fila(e)),
-                         unsafe_allow_html=True)
             if e["sacos_contados"] is None:
-                sacos = ""
+                sacos = "El video aún no se analizó"
             elif e["sacos_esperados"] is None:
-                sacos = f" · {e['sacos_contados']} sacos en el video"
+                sacos = f"{e['sacos_contados']} sacos en el video"
             else:
-                sacos = f" · {e['sacos_contados']} de {e['sacos_esperados']} sacos en el video"
+                sacos = f"{e['sacos_contados']} de {e['sacos_esperados']} sacos en el video"
+            que.markdown(
+                f"<span class='q-hall {clase}'>{hallazgo}</span><br>"
+                f"<span class='q-tenue' style='font-size: 13.5px'>{sacos}</span>",
+                unsafe_allow_html=True)
+
             incompleto = e["estado"] in ESTADOS_CERRADOS and (
                 e["sacos_contados"] is None or not e["severidad"])
-            que.caption(NOMBRE_DEL_ESTADO.get(e["estado"], e["estado"]) + sacos
-                        + (" · cerrado sin análisis completo" if incompleto else ""))
-            accion.button("Ver detalle", key=f"revisar_{e['id']}", use_container_width=True,
+            estado = NOMBRE_DEL_ESTADO.get(e["estado"], e["estado"])
+            proceso.markdown(
+                _proceso_de_la_fila(e)
+                + (f"<span class='q-tenue' style='font-size: 13px'>{estado}"
+                   + (" · cerrado sin análisis completo" if incompleto else "")
+                   + "</span>" if e["estado"] != "pendiente" else ""),
+                unsafe_allow_html=True)
+            accion.button("Revisar", key=f"revisar_{e['id']}", use_container_width=True,
                           type="primary" if e["estado"] == "pendiente" else "secondary",
                           on_click=_elegir_evento, args=(e["id"],))
 
 
 def _tabla_de_la_bandeja(eventos: list[dict]) -> None:
-    st.dataframe(
+    _tabla(
         pd.DataFrame([{
             "ID": e["id"],
             "Fecha": e["creado_en"][:19].replace("T", " "),
@@ -758,7 +854,7 @@ def _senales_de_la_bandeja(bandeja: dict) -> None:
                        "pendiente_analisis"))
     if sin_clip and st.session_state.get("filtro_estado") != "sin_clip":
         atajos.append(("Ver solo sin video", "filtro_estado", "sin_clip"))
-    columnas = st.columns([3] * len(atajos) + [2] + [3] * (3 - len(atajos)))
+    columnas = st.columns([4] * len(atajos) + [2] + [4] * (3 - len(atajos)))
     for columna, (etiqueta, clave, valor) in zip(columnas, atajos):
         columna.button(etiqueta, key=f"atajo_{clave}_{valor}", use_container_width=True,
                        on_click=_aplicar_filtro, args=(clave, valor))
@@ -868,18 +964,25 @@ def _pagina_del_evento(evento_id: int) -> None:
     st.caption(f"Evento #{detalle['id']} · {detalle['cliente']} · {detalle['producto']} · "
                f"{NOMBRE_DEL_ESTADO.get(detalle['estado'], detalle['estado'])}")
     st.markdown(_barra_de_pasos(_pasos_del_detalle(detalle)), unsafe_allow_html=True)
-    _cifras_del_detalle(detalle)
+    with _tarjeta("cifras"):
+        _cifras_del_detalle(detalle)
 
+    # Cada bloque en su tarjeta blanca, como en el prototipo: video, analisis y
+    # personas a la izquierda; la decision a la derecha.
     evidencia, decision = st.columns([3, 2], gap="large")
     with evidencia:
-        _reproductor_del_clip(detalle)
-        _fotogramas_del_detalle(detalle)
-        _analisis_del_detalle(detalle)
-        _personas_del_detalle(detalle)
+        with _tarjeta("video"):
+            _reproductor_del_clip(detalle)
+            _fotogramas_del_detalle(detalle)
+        with _tarjeta("analisis"):
+            _analisis_del_detalle(detalle)
+        with _tarjeta("personas"):
+            _personas_del_detalle(detalle)
     with decision:
-        _clasificacion_del_evento(detalle)
-        _avisos_del_evento({"id": detalle["id"],
-                            "severidad": detalle["analisis"]["severidad"]})
+        with _tarjeta("decision"):
+            _clasificacion_del_evento(detalle)
+            _avisos_del_evento({"id": detalle["id"],
+                                "severidad": detalle["analisis"]["severidad"]})
 
 
 def _pasos_del_detalle(detalle: dict) -> list[tuple[str, str]]:
@@ -1136,7 +1239,7 @@ def _personas_del_detalle(detalle: dict) -> None:
         st.caption("Nadie estuvo en la zona de carga durante el clip.")
         return
 
-    st.dataframe(
+    _tabla(
         pd.DataFrame([{
             "Persona (id temporal)": p["id_temporal"],
             "Tiempo en zona (s)": float(p["segundos_en_zona"]),
@@ -1222,7 +1325,7 @@ def _clasificacion_del_evento(detalle: dict) -> None:
 
     if len(detalle["decisiones"]) > 1:
         st.caption("Historial de decisiones")
-        st.dataframe(
+        _tabla(
             pd.DataFrame([{
                 "Fecha": d["fecha"][:19].replace("T", " "),
                 "Decisión": NOMBRE_DEL_ESTADO.get(d["estado"], d["estado"]),
@@ -1244,7 +1347,8 @@ def _clasificacion_del_evento(detalle: dict) -> None:
     # comparten ni la opcion marcada ni el comentario a medio escribir.
     clave_estado = f"estado_del_veredicto_{detalle['id']}"
     clave_comentario = f"comentario_del_veredicto_{detalle['id']}"
-    with st.form(f"clasificar_{detalle['id']}"):
+    # Sin borde propio: el formulario ya va dentro de la tarjeta de la decision.
+    with st.form(f"clasificar_{detalle['id']}", border=False):
         st.radio(
             "Resultado de la revisión", posibles, key=clave_estado,
             format_func=lambda e: NOMBRE_DE_LA_DECISION.get(e, NOMBRE_DEL_ESTADO.get(e, e)))
@@ -1393,7 +1497,7 @@ def _olvidar_la_orden() -> None:
 
 def _orden_en_curso(orden: dict) -> None:
     """El paso 1 ya hecho, en una linea, con la salida para corregirlo."""
-    with st.container(border=True):
+    with _tarjeta("orden"):
         datos, cambiar = st.columns([8, 2], vertical_alignment="center")
         datos.markdown(
             f"**{orden['numero_orden']}** · {orden['cliente']} · {orden['producto']}  \n"
@@ -1489,7 +1593,7 @@ def _reloj_de_la_carga(inicio: dt.datetime, bascula: str) -> None:
     resto de la pagina (ni sus llamadas a la API).
     """
     segundos = max(0, int((dt.datetime.now() - inicio).total_seconds()))
-    with st.container(border=True):
+    with _tarjeta("carga"):
         # El reloj acompana, no manda: a 64 px era lo mas grande de la pantalla
         # y el tiempo de carga no es el dato con el que se decide nada.
         izquierda, derecha = st.columns([5, 1], vertical_alignment="center")
@@ -1588,7 +1692,7 @@ def _pesaje_con_bascula(orden: dict) -> None:
 
     datos = previa["datos"]
     hora = datos["leido_en"][11:19]
-    with st.container(border=True):
+    with _tarjeta("lectura"):
         peso, comparacion = st.columns([3, 4], vertical_alignment="center")
         peso.caption(f"Lectura de la báscula {datos['bascula_id']} a las {hora}")
         peso.markdown(f"<div class='q-lectura'>{float(datos['peso_kg']):,.0f} kg</div>",
@@ -1740,7 +1844,7 @@ def _historial_de_pesadas() -> None:
 
     # El resultado va el primero: es lo que se busca en esta tabla. Antes habia
     # que restar dos columnas de cabeza para saber que pesada abrio un caso.
-    st.dataframe(
+    _tabla(
         pd.DataFrame([{
             "Resultado": resultado(p),
             "Fecha y hora": p["fecha_hora"][:19].replace("T", " "),
@@ -1812,7 +1916,7 @@ def panel_de_ordenes() -> None:
     if not ordenes:
         st.info("Todavía no se ha consultado ninguna orden al ERP.")
         return
-    st.dataframe(
+    _tabla(
         pd.DataFrame([{
             "Orden": o["numero_orden"],
             "Cliente": o["cliente"],
@@ -1832,7 +1936,7 @@ def _pesadas_de_la_orden(numero_orden: str) -> None:
         st.caption("Esta orden todavía no tiene pesadas.")
         return
     st.markdown(f"Pesadas de {numero_orden}, con lo que el ERP esperaba en ese momento:")
-    st.dataframe(
+    _tabla(
         pd.DataFrame([{
             "Pesada": p["id"],
             "Fecha y hora": p["fecha_hora"][:19].replace("T", " "),
@@ -1904,7 +2008,7 @@ def _grabacion_continua() -> None:
     if filas:
         filas.sort(key=lambda f: f["verificado_en"], reverse=True)
         with st.expander("Historial de caídas y recuperaciones de las cámaras"):
-            st.dataframe(
+            _tabla(
                 pd.DataFrame([{
                     "Fecha y hora": str(f["verificado_en"])[:19].replace("T", " "),
                     "Cámara": f["componente"],
@@ -1984,7 +2088,7 @@ def _clips_y_conteo() -> None:
                           "grabación de ese periodo o la cámara estaba fuera de servicio.")
     cifras[3].metric("Con conteo", int((tabla["Conteo"] == "Contado").sum()))
 
-    st.dataframe(tabla, use_container_width=True, hide_index=True)
+    _tabla(tabla, use_container_width=True, hide_index=True)
     st.caption("El video de cada evento se reproduce en Eventos, al abrir el evento.")
 
 
@@ -2058,7 +2162,7 @@ def panel_de_tolerancias(editable: bool) -> None:
                               if fila["actualizado_por_nombre"]
                               else "Sin cambios desde la instalación"),
         })
-    st.dataframe(pd.DataFrame(filas), use_container_width=True, hide_index=True,
+    _tabla(pd.DataFrame(filas), use_container_width=True, hide_index=True,
                  column_config={
                      "Límite en kg": st.column_config.NumberColumn(format="%.2f"),
                      "Límite en %": st.column_config.NumberColumn(format="%.2f")})
@@ -2127,7 +2231,7 @@ def _historial_de_la_tolerancia(producto: str) -> None:
     if not cambios.json():
         st.caption("Sin cambios desde la instalación.")
         return
-    st.dataframe(
+    _tabla(
         pd.DataFrame([{
             "Fecha": c["fecha"][:16].replace("T", " "),
             "Usuario": c["usuario_nombre"] or f"id {c['usuario_id']}",
@@ -2167,46 +2271,47 @@ def panel_de_usuarios() -> None:
         st.error(detalle_del_error(respuesta))
         return
 
-    anchos = [4, 2, 3, 2, 2]
-    for columna, titulo in zip(st.columns(anchos), ("Usuario", "Estado", "Rol", "", "")):
-        columna.caption(titulo)
-    for usuario in respuesta.json():
-        columnas = st.columns(anchos, vertical_alignment="center")
-        columnas[0].write(f"**{usuario['nombre']}**  \n{usuario['correo']}")
-        columnas[1].write("Activo" if usuario["activo"] else "Inactivo")
-        nuevo_rol = columnas[2].selectbox(
-            "Rol", roles, index=roles.index(usuario["rol"]), format_func=str.capitalize,
-            key=f"rol_{usuario['id']}", label_visibility="collapsed")
-        # Elegir otro rol en la lista ya no lo cambia: lo propone. Antes bastaba
-        # con rozar el desplegable para dar o quitar permisos de administrador.
-        if nuevo_rol != usuario["rol"] and columnas[3].button(
-                "Aplicar rol", key=f"aplicar_rol_{usuario['id']}", type="primary",
-                use_container_width=True):
-            _confirmar(
-                f"Va a cambiar el rol de **{usuario['nombre']}** de "
-                f"{usuario['rol'].capitalize()} a **{nuevo_rol.capitalize()}**.",
-                "El cambio se aplica de inmediato y queda registrado en la auditoría "
-                "con su usuario.",
-                "Cambiar rol", "PATCH", f"/usuarios/{usuario['id']}/rol",
-                {"rol": nuevo_rol},
-                f"{usuario['nombre']} ahora tiene el rol {nuevo_rol.capitalize()}.")
-        etiqueta = "Desactivar" if usuario["activo"] else "Reactivar"
-        if columnas[4].button(etiqueta, key=f"activacion_{usuario['id']}",
-                              use_container_width=True):
-            if usuario["activo"]:
+    with _tarjeta("usuarios"):
+        anchos = [4, 2, 3, 2, 2]
+        for columna, titulo in zip(st.columns(anchos), ("Usuario", "Estado", "Rol", "", "")):
+            columna.caption(titulo)
+        for usuario in respuesta.json():
+            columnas = st.columns(anchos, vertical_alignment="center")
+            columnas[0].write(f"**{usuario['nombre']}**  \n{usuario['correo']}")
+            columnas[1].write("Activo" if usuario["activo"] else "Inactivo")
+            nuevo_rol = columnas[2].selectbox(
+                "Rol", roles, index=roles.index(usuario["rol"]), format_func=str.capitalize,
+                key=f"rol_{usuario['id']}", label_visibility="collapsed")
+            # Elegir otro rol en la lista ya no lo cambia: lo propone. Antes bastaba
+            # con rozar el desplegable para dar o quitar permisos de administrador.
+            if nuevo_rol != usuario["rol"] and columnas[3].button(
+                    "Aplicar rol", key=f"aplicar_rol_{usuario['id']}", type="primary",
+                    use_container_width=True):
                 _confirmar(
-                    f"Va a desactivar a **{usuario['nombre']}** ({usuario['correo']}).",
-                    "No podrá iniciar sesión hasta que se le reactive. Su historial "
-                    "en la auditoría se conserva.",
-                    "Desactivar usuario", "PATCH", f"/usuarios/{usuario['id']}/activacion",
-                    {"activo": False}, f"{usuario['nombre']} quedó desactivado.")
-            else:
-                _confirmar(
-                    f"Va a reactivar a **{usuario['nombre']}** ({usuario['correo']}).",
-                    f"Podrá volver a iniciar sesión con el rol "
-                    f"{usuario['rol'].capitalize()}.",
-                    "Reactivar usuario", "PATCH", f"/usuarios/{usuario['id']}/activacion",
-                    {"activo": True}, f"{usuario['nombre']} quedó reactivado.")
+                    f"Va a cambiar el rol de **{usuario['nombre']}** de "
+                    f"{usuario['rol'].capitalize()} a **{nuevo_rol.capitalize()}**.",
+                    "El cambio se aplica de inmediato y queda registrado en la auditoría "
+                    "con su usuario.",
+                    "Cambiar rol", "PATCH", f"/usuarios/{usuario['id']}/rol",
+                    {"rol": nuevo_rol},
+                    f"{usuario['nombre']} ahora tiene el rol {nuevo_rol.capitalize()}.")
+            etiqueta = "Desactivar" if usuario["activo"] else "Reactivar"
+            if columnas[4].button(etiqueta, key=f"activacion_{usuario['id']}",
+                                  use_container_width=True):
+                if usuario["activo"]:
+                    _confirmar(
+                        f"Va a desactivar a **{usuario['nombre']}** ({usuario['correo']}).",
+                        "No podrá iniciar sesión hasta que se le reactive. Su historial "
+                        "en la auditoría se conserva.",
+                        "Desactivar usuario", "PATCH", f"/usuarios/{usuario['id']}/activacion",
+                        {"activo": False}, f"{usuario['nombre']} quedó desactivado.")
+                else:
+                    _confirmar(
+                        f"Va a reactivar a **{usuario['nombre']}** ({usuario['correo']}).",
+                        f"Podrá volver a iniciar sesión con el rol "
+                        f"{usuario['rol'].capitalize()}.",
+                        "Reactivar usuario", "PATCH", f"/usuarios/{usuario['id']}/activacion",
+                        {"activo": True}, f"{usuario['nombre']} quedó reactivado.")
 
 
 # ------------------------------------------------------------------ programa
@@ -2302,20 +2407,21 @@ def _eventos_abiertos() -> int | None:
 
 
 def _cabecera_de_eventos(abiertos: int | None) -> None:
-    """Titulo y lo unico que importa al entrar: cuantos eventos esperan revision.
+    """Titulo de la bandeja y cuantos eventos esperan revision.
 
-    Solo en Eventos. En las demas pantallas basta la linea de estado: el titulo
-    de 40 px repetido en cada una empujaba el contenido hacia abajo, y la cifra
-    de pendientes ya esta en el menu.
+    Compacto, como en el prototipo. El titulo "Control de despacho" a 40 px con
+    la cifra en dorado ocupaba dos renglones enormes antes de llegar a un solo
+    evento, y decia en grande el nombre del sistema en lugar del de la pantalla.
     """
     if abiertos:
-        estado = (f'<span class="q-oro">{abiertos} evento{"s" if abiertos != 1 else ""}</span>'
-                  f'<span class="q-tenue"> pendiente{"s" if abiertos != 1 else ""} de revisión</span>')
+        estado = (f"<strong>{abiertos} pendiente{'s' if abiertos != 1 else ''} de "
+                  f"revisión.</strong>")
     elif abiertos == 0:
-        estado = '<span class="q-tenue">Sin eventos pendientes de revisión</span>'
+        estado = "Sin eventos pendientes de revisión."
     else:
         estado = ""
-    st.markdown(f'<div class="q-saludo">Control de despacho<br>{estado}</div>',
+    st.markdown(f'<div class="q-titulo">Eventos</div>'
+                f'<div class="q-tenue" style="margin-bottom: 6px">{estado}</div>',
                 unsafe_allow_html=True)
 
 

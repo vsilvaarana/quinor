@@ -93,7 +93,7 @@ at.selectbox(key="filtro_severidad").set_value("alta").run()
 [b for b in at.button if b.key=="revisar_213"][0].click().run()
 ok(not at.exception,"la pagina del evento dibuja sin excepciones")
 ok("Evento 2 de 3 de la bandeja" in textos(at),"3: pagina propia con posicion")
-ok(not [b for b in at.button if b.label=="Ver detalle"],"3: la bandeja no se dibuja debajo")
+ok(not [b for b in at.button if b.label=="Revisar"],"3: la bandeja no se dibuja debajo")
 ok(at.error[0].value.startswith("Falta peso y los bultos cuadran"),"4: la conclusion va primero")
 m=[x for x in at.metric if x.label=="Diferencia de peso"][0]
 ok(m.proto.color==0 or True,"metric presente"); print("     delta_color proto:",m.proto.color, m.delta)
@@ -110,7 +110,7 @@ at.text_area[0].set_value("Revisado el clip completo, faltan kilos."); boton(at,
 ok(any("clasificado como Confirmado" in s.value for s in at.success),"clasificar: confirma en la misma pagina")
 ok(any(l[1]=="/eventos/213/veredicto" for l in LLAMADAS),"clasificar: llamo a la API del evento correcto")
 boton(at,"← Volver a Eventos").click().run()
-ok(len([b for b in at.button if b.label=="Ver detalle"])==3,"3: volver muestra la bandeja")
+ok(len([b for b in at.button if b.label=="Revisar"])==3,"3: volver muestra la bandeja")
 ok(at.selectbox(key="filtro_severidad").value=="alta","3: los filtros se conservan al volver")
 ok(LLAMADAS[-1][0]=="GET","sin escrituras al volver")
 # salud caida

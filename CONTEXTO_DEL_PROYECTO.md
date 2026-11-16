@@ -728,15 +728,20 @@ sesion nueva necesita saber; el detalle, funcion por funcion, esta en
 4. **Endpoint nuevo: `POST /pesadas/lectura-previa`.** Lee la bascula y dice si
    la pesada generaria un evento, sin registrar nada. Es el unico cambio en la
    API. No esta en el Excel del backlog, por decision del responsable.
-5. **Bandeja:** filtros a la vista, paginacion en el pie, la diferencia en kg
-   en grande y una etiqueta de hallazgo por tarjeta (posible sustitucion,
-   faltan sacos, conteo pendiente).
+5. **Bandeja:** filtros a la vista, paginacion en el pie y los eventos en filas
+   con cabecera (severidad, orden, diferencia en kg en grande, hallazgo y
+   proceso), como en el prototipo. El hallazgo dice si es posible sustitucion,
+   faltan sacos o el conteo esta pendiente.
 6. **Confirmaciones** (`_confirmar`, con `st.dialog`) antes de revocar un
    token, cambiar un rol, desactivar un usuario o cambiar una tolerancia.
 7. **Tolerancias en una tabla**; se edita un producto cada vez. **Ingreso en
    dos mitades** (panel de marca y formulario), como en el prototipo.
 8. **Textos:** tildes y trato de usted en la interfaz, sin jerga. Los
    comentarios del codigo siguen sin tildes.
+9. **Todo el contenido va en tarjetas blancas**, como en el prototipo. En una
+   pantalla nueva se usan `_tarjeta(clave)` y `_tabla(...)`, no
+   `st.container(border=True)` ni `st.dataframe`. Los campos son blancos porque
+   `secondaryBackgroundColor` es blanco en `.streamlit/config.toml`.
 
 **Decisiones que no hay que deshacer**
 
@@ -762,6 +767,9 @@ sesion nueva necesita saber; el detalle, funcion por funcion, esta en
 
 **Trampas de Streamlit que costaron tiempo**
 
+- **El dashboard corre en Python 3.11** (imagen `python:3.11-slim`). Probar con
+  una version posterior deja pasar sintaxis que en el contenedor no arranca
+  (f-strings con comillas anidadas). Compilar y probar siempre con 3.11.
 - En Windows, Docker no avisa al contenedor de que un archivo montado cambio:
   el dashboard seguia sirviendo el codigo anterior. El compose arranca ahora con
   `--server.fileWatcherType=poll`. Tras cambiar el comando o la API,

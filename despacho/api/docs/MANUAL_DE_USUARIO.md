@@ -62,16 +62,16 @@ tolerancia del producto.
 Debajo, un resumen de lo que hay en pantalla. Los botones **Ver solo…** aplican
 ese filtro con un clic.
 
-### Leer una tarjeta
+### Leer una fila
 
 | Elemento | Qué significa |
 |---|---|
 | Severidad | Alta, Media o Baja. "Sin severidad" si el análisis no terminó |
 | Cifra en rojo | Diferencia entre el peso real y el esperado |
 | Etiqueta de hallazgo | **Posible sustitución:** falta peso y los sacos cuadran. **Faltan N sacos:** el video contó menos sacos que la orden. **Conteo de sacos pendiente:** el video aún no se analizó |
-| Barra de cuatro pasos | Pesada, Video, Conteo y Análisis. Verde: hecho. Azul: en curso. Gris: pendiente |
+| Proceso | "Análisis completo" cuando el sistema terminó. Si no, dice en qué paso va (Pesada, Video, Conteo, Análisis) o qué falló. La barra de debajo lo resume: verde, hecho; azul, en curso; gris, pendiente |
 
-Pulse **Ver detalle** para abrir el evento. **Vista de tabla** muestra los
+Pulse **Revisar** para abrir el evento. **Vista de tabla** muestra los
 mismos eventos en una tabla, y la paginación está al pie.
 
 ## 5. Revisar y clasificar un evento

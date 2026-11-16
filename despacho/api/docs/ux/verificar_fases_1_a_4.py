@@ -106,7 +106,7 @@ P=lambda: [l[3] for l in LLAMADAS if l[1]=="/eventos/bandeja"][-1]
 at=nueva(); ok(not at.exception,"la bandeja dibuja sin excepciones")
 t=textos(at)
 ok("Faltan 3 sacos" in t and "Posible sustitución" in t and "Conteo de sacos pendiente" in t,"F2: hallazgo en cada tarjeta")
-ok("q-dif'>-350 kg" in t,"F2: diferencia en kg destacada")
+ok("q-dif'>−350 kg" in t,"F2: diferencia en kg destacada")
 ok(not [e for e in at.expander if e.label=="Filtros"],"F2: los filtros ya no estan en un desplegable")
 ok(P()=={"tamano":50,"pagina":1},"F2: por defecto no manda filtros (valen los de la API)")
 # atajo de resumen
@@ -146,7 +146,7 @@ ROL_SESION="administrador"; PANTALLA="Usuarios"; at=nueva(); ok(not at.exception
 n=len(LLAMADAS); at.selectbox(key="rol_1").set_value("consulta").run()
 ok(not any(l[0]=="PATCH" for l in LLAMADAS[n:]),"F3: elegir otro rol en la lista ya no lo aplica")
 boton(at,"Aplicar rol").click().run(); ok(not any(l[0]=="PATCH" for l in LLAMADAS[n:]),"F3: Aplicar rol pide confirmacion")
-ABIERTOS.add("aplicar_rol_1"); at.run(); boton(at,"Cambiar rol").click().run(); ABIERTOS.clear(); at.run()
+ABIERTOS.add("aplicar_rol_1"); at.run(); boton(at,"Cambiar rol").click().run(); ABIERTOS.clear(); at=nueva()   # sesion nueva: AppTest deja restos del dialogo en el arbol
 ok([l for l in LLAMADAS[n:] if l[0]=="PATCH"][0][1:3]==("/usuarios/1/rol",{"rol":"consulta"}),"F3: al confirmar, cambia el rol correcto")
 ok(not [b for b in at.button if b.label=="Aplicar rol"],"tras aplicar, no queda cambio pendiente")
 n=len(LLAMADAS); [b for b in at.button if b.key=="activacion_2"][0].click().run()
@@ -159,11 +159,11 @@ ok(not at.exception,"F4: Eventos dibuja sin excepciones")
 ok(MENU_VISTO=={"Operación":["Eventos (3)","Registro de pesada","Órdenes"],"Monitoreo":["Cámaras","Estado del sistema"],"Administración":["Tolerancias","Tokens de acceso"]},"F4: menu en tres grupos, con contador, y sin Usuarios para el supervisor")
 rutas={l[1] for l in LLAMADAS[n:]}
 ok(rutas=={"/eventos/bandeja","/salud"},"F4: en Eventos solo se llama a la bandeja y a la salud: "+str(sorted(rutas)))
-ok("3 eventos" in textos(at),"F4: Eventos conserva el titulo con los pendientes")
+ok("3 pendientes de revisión" in textos(at),"F4: Eventos dice cuantos pendientes hay")
 at.selectbox(key="filtro_severidad").set_value("media").run()
 PANTALLA="Registro de pesada"; n=len(LLAMADAS); at.run()
 ok(not at.exception and "Sistema en línea" in textos(at),"F4: la linea de estado va en todas las pantallas")
-ok("3 eventos" not in textos(at),"F4: el titulo grande solo esta en Eventos")
+ok("3 pendientes de revisión" not in textos(at),"F4: el titulo de Eventos solo esta en Eventos")
 rutas={l[1] for l in LLAMADAS[n:]} | {"/salud"}   # /salud puede venir de la copia de 20 s
 ok(rutas=={"/eventos/bandeja","/salud","/pesadas"},"F4: en Registro de pesada no se piden tokens, usuarios ni tolerancias: "+str(sorted(rutas)))
 PANTALLA=None; at.run()
